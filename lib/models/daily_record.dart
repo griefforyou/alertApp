@@ -11,6 +11,20 @@ class SessionRecord {
     required this.totalStudySeconds,
   });
 
+  SessionRecord copyWith({
+    DateTime? startTime,
+    DateTime? endTime,
+    int? completedCycles,
+    int? totalStudySeconds,
+  }) {
+    return SessionRecord(
+      startTime: startTime ?? this.startTime,
+      endTime: endTime ?? this.endTime,
+      completedCycles: completedCycles ?? this.completedCycles,
+      totalStudySeconds: totalStudySeconds ?? this.totalStudySeconds,
+    );
+  }
+
   Map<String, dynamic> toJson() => {
     'startTime': startTime.toIso8601String(),
     'endTime': endTime.toIso8601String(),
@@ -38,6 +52,20 @@ class DailyRecord {
     this.completedCycles = 0,
     this.sessions = const [],
   });
+
+  DailyRecord copyWith({
+    DateTime? date,
+    int? totalStudySeconds,
+    int? completedCycles,
+    List<SessionRecord>? sessions,
+  }) {
+    return DailyRecord(
+      date: date ?? this.date,
+      totalStudySeconds: totalStudySeconds ?? this.totalStudySeconds,
+      completedCycles: completedCycles ?? this.completedCycles,
+      sessions: sessions ?? this.sessions,
+    );
+  }
 
   Map<String, dynamic> toJson() => {
     'date': date.toIso8601String().substring(0, 10),
