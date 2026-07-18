@@ -25,9 +25,13 @@ class StorageService {
   }
 
   Future<void> saveSession(SessionState session) async {
-    final dir = await _storageDir;
-    final file = File('${dir.path}/$_sessionFile');
-    await file.writeAsString(jsonEncode(session.toJson()));
+    try {
+      final dir = await _storageDir;
+      final file = File('${dir.path}/$_sessionFile');
+      await file.writeAsString(jsonEncode(session.toJson()));
+    } catch (e) {
+      debugPrint('Failed to save session: $e');
+    }
   }
 
   Future<void> clearSession() async {
@@ -52,8 +56,20 @@ class StorageService {
   }
 
   Future<void> saveTodayRecord(DailyRecord record) async {
+    try {
+      final dir = await _storageDir;
+      final file = File('${dir.path}/$_todayRecordFile');
+      await file.writeAsString(jsonEncode(record.toJson()));
+    } catch (e) {
+      debugPrint('Failed to save today record: $e');
+    }
+  }
+
+  Future<void> clearTodayRecord() async {
     final dir = await _storageDir;
     final file = File('${dir.path}/$_todayRecordFile');
-    await file.writeAsString(jsonEncode(record.toJson()));
+    if (await file.exists()) {
+      await file.delete();
+    }
   }
 }

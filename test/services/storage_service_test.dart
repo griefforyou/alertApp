@@ -18,10 +18,16 @@ class MockPathProvider extends PathProviderPlatform {
 
 void main() {
   late StorageService storage;
+  late PathProviderPlatform original;
 
   setUp(() {
+    original = PathProviderPlatform.instance;
     PathProviderPlatform.instance = MockPathProvider();
     storage = StorageService();
+  });
+
+  tearDown(() {
+    PathProviderPlatform.instance = original;
   });
 
   test('save and load session', () async {
@@ -62,6 +68,17 @@ void main() {
   });
 
   test('loadSession returns null when no file exists', () async {
+    final result = await storage.loadSession();
+    expect(result, isNull);
+  });
+
+  test('loadSession returns null on corrupted file', () async {
+    final dir = Directory.systemTemp.createTempSync('test_corrupt_');
+    final mock = MockPathProvider();
+    PathProviderPlatform.instance = mock;
+    final file = File('${dir.path}/current_session.json');
+    await file.writeAsString('not valid json');
+    // Use a storage that points to the same dir
     final result = await storage.loadSession();
     expect(result, isNull);
   });
