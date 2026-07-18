@@ -18,13 +18,13 @@ class TimerService extends ChangeNotifier {
   Duration? get remaining => _remaining;
 
   double get progress {
-    if (_state == null) return 0.0;
+    if (_state == null || _remaining == null) return 0.0;
     final total = Duration(
       minutes: _state!.currentPhase == Phase.learning
           ? _state!.studyMinutes
           : _state!.breakMinutes,
     );
-    if (total.inSeconds == 0) return 0.0;
+    if (total.inSeconds <= 0) return 0.0;
     return 1.0 - (_remaining!.inSeconds / total.inSeconds);
   }
 
@@ -60,7 +60,9 @@ class TimerService extends ChangeNotifier {
 
   void _tick() {
     if (_state == null || _state!.isPaused) return;
-    _remaining = _remaining! - const Duration(seconds: 1);
+    final r = _remaining;
+    if (r == null) return;
+    _remaining = r - const Duration(seconds: 1);
     if (_remaining!.inSeconds <= 0) {
       _advancePhase();
     }
@@ -94,18 +96,21 @@ class TimerService extends ChangeNotifier {
     }
 
     onPhaseChanged?.call();
+    _storage.saveSession(_state!);
     notifyListeners();
   }
 
   void pause() {
     if (_state == null || _state!.isPaused) return;
     _state = _state!.copyWith(isPaused: true, elapsedBeforePause: _remaining);
+    _storage.saveSession(_state!);
     notifyListeners();
   }
 
   void resume() {
     if (_state == null || !_state!.isPaused) return;
     _state = _state!.copyWith(isPaused: false);
+    _storage.saveSession(_state!);
     notifyListeners();
   }
 
