@@ -1,0 +1,9 @@
+[
+  {
+    "id": "default",
+    "name": "默认方案",
+    "studyMinutes": 45,
+    "breakMinutes": 10,
+    "totalCycles": 4
+  }
+]
