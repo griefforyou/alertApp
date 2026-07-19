@@ -22,14 +22,13 @@ class ControlButtons extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+
     if (isFinished) {
       return ElevatedButton.icon(
         onPressed: onStart,
         icon: const Icon(Icons.refresh),
         label: const Text('重新开始'),
-        style: ElevatedButton.styleFrom(
-          padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
-        ),
       );
     }
 
@@ -39,11 +38,10 @@ class ControlButtons extends StatelessWidget {
         children: [
           OutlinedButton.icon(
             onPressed: () => onStop(),
-            icon: const Icon(Icons.stop),
-            label: const Text('结束'),
+            icon: Icon(Icons.stop, color: cs.error),
+            label: Text('结束', style: TextStyle(color: cs.error)),
             style: OutlinedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-              foregroundColor: Colors.red,
+              side: BorderSide(color: cs.error.withValues(alpha: 0.5)),
             ),
           ),
           const SizedBox(width: 16),
@@ -51,10 +49,6 @@ class ControlButtons extends StatelessWidget {
             onPressed: onResume,
             icon: const Icon(Icons.play_arrow),
             label: const Text('继续'),
-            style: ElevatedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-              textStyle: const TextStyle(fontSize: 16),
-            ),
           ),
         ],
       );
@@ -66,7 +60,7 @@ class ControlButtons extends StatelessWidget {
         icon: const Icon(Icons.play_arrow),
         label: const Text('开始'),
         style: ElevatedButton.styleFrom(
-          padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+          padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 16),
           textStyle: const TextStyle(fontSize: 18),
         ),
       );
@@ -75,13 +69,12 @@ class ControlButtons extends StatelessWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-          OutlinedButton.icon(
-            onPressed: () => onStop(),
-            icon: const Icon(Icons.stop),
-          label: const Text('结束'),
+        OutlinedButton.icon(
+          onPressed: () => onStop(),
+          icon: Icon(Icons.stop, color: cs.error),
+          label: Text('结束', style: TextStyle(color: cs.error)),
           style: OutlinedButton.styleFrom(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-            foregroundColor: Colors.red,
+            side: BorderSide(color: cs.error.withValues(alpha: 0.5)),
           ),
         ),
         const SizedBox(width: 16),
@@ -90,8 +83,7 @@ class ControlButtons extends StatelessWidget {
           icon: Icon(isPaused ? Icons.play_arrow : Icons.pause),
           label: Text(isPaused ? '继续' : '暂停'),
           style: ElevatedButton.styleFrom(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-            textStyle: const TextStyle(fontSize: 16),
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
           ),
         ),
       ],

@@ -14,7 +14,9 @@ import "../widgets/phase_overlay.dart";
 import "preset_edit_page.dart";
 
 class TimerPage extends StatefulWidget {
-  const TimerPage({super.key});
+  final ValueChanged<ThemeMode>? onThemeModeChanged;
+  final ThemeMode themeMode;
+  const TimerPage({super.key, this.onThemeModeChanged, this.themeMode = ThemeMode.system});
 
   @override
   State<TimerPage> createState() => _TimerPageState();
@@ -183,7 +185,7 @@ class _TimerPageState extends State<TimerPage> {
               onPressed: () => Navigator.of(ctx).pop(),
               child: const Text("取消"),
             ),
-            TextButton(
+            FilledButton(
               onPressed: () {
                 final v = nameController.text.trim();
                 if (v.isEmpty) return;
@@ -227,8 +229,12 @@ class _TimerPageState extends State<TimerPage> {
             onPressed: () => Navigator.of(ctx).pop(false),
             child: const Text("取消"),
           ),
-          TextButton(
+          FilledButton(
             onPressed: () => Navigator.of(ctx).pop(true),
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(ctx).colorScheme.error,
+              foregroundColor: Theme.of(ctx).colorScheme.onError,
+            ),
             child: const Text("删除"),
           ),
         ],
@@ -263,7 +269,7 @@ class _TimerPageState extends State<TimerPage> {
             onPressed: () => Navigator.of(ctx).pop(),
             child: const Text("取消"),
           ),
-          TextButton(
+          FilledButton(
             onPressed: () {
               final v = controller.text.trim();
               if (v.isEmpty) return;
@@ -307,8 +313,12 @@ class _TimerPageState extends State<TimerPage> {
             onPressed: () => Navigator.of(ctx).pop(false),
             child: const Text("取消"),
           ),
-          TextButton(
+          FilledButton(
             onPressed: () => Navigator.of(ctx).pop(true),
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(ctx).colorScheme.error,
+              foregroundColor: Theme.of(ctx).colorScheme.onError,
+            ),
             child: const Text("结束"),
           ),
         ],
@@ -331,6 +341,59 @@ class _TimerPageState extends State<TimerPage> {
     _notificationService.cancelAll();
     await _timerService.stop();
     setState(() {});
+  }
+
+  void _showThemeSettings() {
+    final currentMode = widget.themeMode;
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Text("主题",
+                  style: Theme.of(ctx).textTheme.titleLarge,
+                ),
+              ),
+              _ThemeTile(
+                icon: Icons.light_mode,
+                label: "浅色",
+                selected: currentMode == ThemeMode.light,
+                onTap: () {
+                  widget.onThemeModeChanged?.call(ThemeMode.light);
+                  Navigator.pop(ctx);
+                },
+              ),
+              _ThemeTile(
+                icon: Icons.dark_mode,
+                label: "深色",
+                selected: currentMode == ThemeMode.dark,
+                onTap: () {
+                  widget.onThemeModeChanged?.call(ThemeMode.dark);
+                  Navigator.pop(ctx);
+                },
+              ),
+              _ThemeTile(
+                icon: Icons.settings_brightness,
+                label: "跟随系统",
+                selected: currentMode == ThemeMode.system,
+                onTap: () {
+                  widget.onThemeModeChanged?.call(ThemeMode.system);
+                  Navigator.pop(ctx);
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   Future<void> _handleEditProfile() async {
@@ -373,11 +436,11 @@ class _TimerPageState extends State<TimerPage> {
                 child: Container(
                   width: 20,
                   height: 20,
-                  decoration: const BoxDecoration(
-                    color: Colors.red,
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.error,
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(Icons.close, size: 14, color: Colors.white),
+                  child: Icon(Icons.close, size: 14, color: Theme.of(context).colorScheme.onError),
                 ),
               ),
             ),
@@ -400,132 +463,146 @@ class _TimerPageState extends State<TimerPage> {
     final isRunning = _timerService.isRunning;
     final isPaused = state?.isPaused ?? false;
     final isFinished = _timerService.isFinished;
-
-    final bgColor = state?.currentPhase == Phase.breaking
-        ? const Color(0xFFF1E8F9)
-        : const Color(0xFFE3F2FD);
+    final cs = Theme.of(context).colorScheme;
+    final barColor = state?.currentPhase == Phase.breaking ? cs.tertiary : cs.primary;
 
     return Stack(
       children: [
         Scaffold(
-          backgroundColor: bgColor,
           appBar: AppBar(
             title: const Text("计时器"),
-            centerTitle: true,
-            elevation: 0,
-            backgroundColor: Colors.transparent,
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.settings_outlined),
+                onPressed: _showThemeSettings,
+                tooltip: "主题",
+              ),
+            ],
           ),
           body: SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
-              child: Column(
-                children: [
-                  SizedBox(
-                    height: 48,
-                    child: Row(
+            child: Column(
+              children: [
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 400),
+                  curve: Curves.easeInOut,
+                  height: 3,
+                  color: barColor,
+                ),
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    child: Column(
                       children: [
-                        Expanded(
-                          child: Listener(
-                            onPointerSignal: (event) {
-                              if (event is PointerScrollEvent) {
-                                _chipScrollController.jumpTo(
-                                  (_chipScrollController.offset + event.scrollDelta.dy).clamp(
-                                    _chipScrollController.position.minScrollExtent,
-                                    _chipScrollController.position.maxScrollExtent,
+                        const SizedBox(height: 8),
+                        SizedBox(
+                          height: 48,
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: Listener(
+                                  onPointerSignal: (event) {
+                                    if (event is PointerScrollEvent) {
+                                      _chipScrollController.jumpTo(
+                                        (_chipScrollController.offset + event.scrollDelta.dy).clamp(
+                                          _chipScrollController.position.minScrollExtent,
+                                          _chipScrollController.position.maxScrollExtent,
+                                        ),
+                                      );
+                                    }
+                                  },
+                                  child: GestureDetector(
+                                    onHorizontalDragUpdate: (details) {
+                                      _chipScrollController.jumpTo(
+                                        (_chipScrollController.offset - details.delta.dx).clamp(
+                                          0.0,
+                                          _chipScrollController.position.maxScrollExtent,
+                                        ),
+                                      );
+                                    },
+                                    behavior: HitTestBehavior.translucent,
+                                    child: SingleChildScrollView(
+                                      controller: _chipScrollController,
+                                      physics: const NeverScrollableScrollPhysics(),
+                                      scrollDirection: Axis.horizontal,
+                                      child: Row(
+                                        children: [
+                                          for (int i = 0; i < _profiles.length; i++) ...[
+                                            if (i > 0) const SizedBox(width: 8),
+                                            _buildProfileChip(i),
+                                          ],
+                                        ],
+                                      ),
+                                    ),
                                   ),
-                                );
-                              }
-                            },
-                            child: GestureDetector(
-                              onHorizontalDragUpdate: (details) {
-                                _chipScrollController.jumpTo(
-                                  (_chipScrollController.offset - details.delta.dx).clamp(
-                                    0.0,
-                                    _chipScrollController.position.maxScrollExtent,
-                                  ),
-                                );
-                              },
-                              behavior: HitTestBehavior.translucent,
-                              child: SingleChildScrollView(
-                                controller: _chipScrollController,
-                                physics: const NeverScrollableScrollPhysics(),
-                                scrollDirection: Axis.horizontal,
-                                child: Row(
-                                  children: [
-                                    for (int i = 0; i < _profiles.length; i++) ...[
-                                      if (i > 0) const SizedBox(width: 8),
-                                      _buildProfileChip(i),
-                                    ],
-                                  ],
                                 ),
                               ),
-                            ),
+                              if (_profile.category == TimerCategory.custom)
+                                IconButton(
+                                  icon: Icon(_editMode ? Icons.check : Icons.edit, size: 20),
+                                  onPressed: _timerService.state != null ? null : () => setState(() => _editMode = !_editMode),
+                                  tooltip: _editMode ? "完成" : "编辑",
+                                ),
+                              IconButton(
+                                icon: const Icon(Icons.add_circle_outline, size: 20),
+                                onPressed: _timerService.state != null ? null : _handleAddProfile,
+                                tooltip: "添加",
+                              ),
+                            ],
                           ),
                         ),
-                        if (_profile.category == TimerCategory.custom)
-                          IconButton(
-                            icon: Icon(_editMode ? Icons.check : Icons.edit, size: 20),
-                            onPressed: _timerService.state != null ? null : () => setState(() => _editMode = !_editMode),
-                            tooltip: _editMode ? "完成" : "编辑",
+                        const Spacer(flex: 2),
+                        if (remaining != null && state != null)
+                          TimerDisplay(
+                            remaining: remaining,
+                            phase: state.currentPhase,
+                            currentRound: state.roundIndex + 1,
+                            totalRounds: state.rounds.length,
+                            currentCycle: state.currentCycle,
+                            totalCycles: state.totalCycles,
+                            progress: _timerService.progress,
+                            typeName: _typeName,
+                          )
+                        else
+                          TimerDisplay(
+                            remaining: Duration.zero,
+                            phase: Phase.idle,
+                            currentRound: 1,
+                            totalRounds: _profile.rounds.length,
+                            currentCycle: 0,
+                            totalCycles: _profile.totalCycles,
+                            progress: 0,
+                            studyMinutes: _profile.studyMinutes,
+                            breakMinutes: _profile.breakMinutes,
+                            typeName: _typeName,
                           ),
-                        IconButton(
-                          icon: const Icon(Icons.add_circle_outline, size: 20),
-                          onPressed: _timerService.state != null ? null : _handleAddProfile,
-                          tooltip: "添加",
+                        const Spacer(flex: 2),
+                        ControlButtons(
+                          isRunning: isRunning,
+                          isPaused: isPaused,
+                          isFinished: isFinished,
+                          onStart: _handleStart,
+                          onPause: _handlePause,
+                          onResume: _handleResume,
+                          onStop: _handleStop,
                         ),
+                        const SizedBox(height: 24),
+                        PresetCard(
+                          preset: _profile,
+                          typeName: _typeName,
+                          onTap: _timerService.state != null ? null : _handleEditProfile,
+                        ),
+                        const SizedBox(height: 12),
+                        StatsCard(
+                          totalStudySeconds: _displayStudySeconds,
+                          completedCycles: _currentCycles,
+                          typeName: _typeName,
+                        ),
+                        const Spacer(flex: 1),
                       ],
                     ),
                   ),
-                  const Spacer(flex: 2),
-                  if (remaining != null && state != null)
-                    TimerDisplay(
-                      remaining: remaining,
-                      phase: state.currentPhase,
-                      currentRound: state.roundIndex + 1,
-                      totalRounds: state.rounds.length,
-                      currentCycle: state.currentCycle,
-                      totalCycles: state.totalCycles,
-                      progress: _timerService.progress,
-                      typeName: _typeName,
-                    )
-                  else
-                    TimerDisplay(
-                      remaining: Duration.zero,
-                      phase: Phase.idle,
-                      currentRound: 1,
-                      totalRounds: _profile.rounds.length,
-                      currentCycle: 0,
-                      totalCycles: _profile.totalCycles,
-                      progress: 0,
-                      studyMinutes: _profile.studyMinutes,
-                      breakMinutes: _profile.breakMinutes,
-                      typeName: _typeName,
-                    ),
-                  const Spacer(flex: 2),
-                  ControlButtons(
-                    isRunning: isRunning,
-                    isPaused: isPaused,
-                    isFinished: isFinished,
-                    onStart: _handleStart,
-                    onPause: _handlePause,
-                    onResume: _handleResume,
-                    onStop: _handleStop,
-                  ),
-                  const Spacer(flex: 1),
-                  PresetCard(
-                    preset: _profile,
-                    typeName: _typeName,
-                    onTap: _timerService.state != null ? null : _handleEditProfile,
-                  ),
-                  const SizedBox(height: 12),
-                  StatsCard(
-                    totalStudySeconds: _displayStudySeconds,
-                    completedCycles: _currentCycles,
-                    typeName: _typeName,
-                  ),
-                  const Spacer(flex: 1),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
         ),
@@ -544,6 +621,31 @@ class _TimerPageState extends State<TimerPage> {
             },
           ),
       ],
+    );
+  }
+}
+
+class _ThemeTile extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _ThemeTile({
+    required this.icon,
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return ListTile(
+      leading: Icon(icon, color: cs.primary),
+      title: Text(label),
+      trailing: selected ? Icon(Icons.check, color: cs.primary) : null,
+      onTap: onTap,
     );
   }
 }

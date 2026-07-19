@@ -71,11 +71,14 @@ class _PresetEditPageState extends State<PresetEditPage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text("$_typeLabel \u65b9\u6848"),
+        title: Text("$_typeLabel 方案"),
         actions: [
-          TextButton(
-            onPressed: _onSave,
-            child: const Text("\u4fdd\u5b58"),
+          Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: FilledButton(
+              onPressed: _onSave,
+              child: const Text("保存"),
+            ),
           ),
         ],
       ),
@@ -88,8 +91,8 @@ class _PresetEditPageState extends State<PresetEditPage> {
               child: TextField(
                 controller: _nameController,
                 decoration: const InputDecoration(
-                  labelText: "\u7c7b\u578b\u540d\u79f0",
-                  border: OutlineInputBorder(),
+                  labelText: "类型名称",
+                  hintText: "例如：跑步、阅读、瑜伽",
                 ),
               ),
             ),
@@ -118,38 +121,43 @@ class _PresetEditPageState extends State<PresetEditPage> {
           OutlinedButton.icon(
             onPressed: _addRound,
             icon: const Icon(Icons.add),
-            label: const Text("\u6dfb\u52a0\u4e0b\u4e00\u7ec4"),
+            label: const Text("添加下一组"),
           ),
           const SizedBox(height: 24),
-          CheckboxListTile(
-            title: const Text("\u591a\u8f6e\u5faa\u73af"),
-            subtitle: const Text("\u52fe\u9009\u540e\uff0c\u6240\u6709\u8f6e\u6b21\u5c06\u5faa\u73af\u91cd\u590d"),
-            value: _multiCycle,
-            onChanged: (v) => setState(() => _multiCycle = v ?? true),
-            controlAffinity: ListTileControlAffinity.leading,
-          ),
-          if (_multiCycle)
-            Padding(
-              padding: const EdgeInsets.only(left: 16, right: 16, bottom: 16),
-              child: Row(
-                children: [
-                  const Text("\u5faa\u73af\u8f6e\u6570\uff1a"),
-                  const SizedBox(width: 12),
-                  SizedBox(
-                    width: 80,
-                    child: TextField(
-                      controller: _cycleController,
-                      keyboardType: TextInputType.number,
-                      textAlign: TextAlign.center,
-                      decoration: const InputDecoration(
-                        border: OutlineInputBorder(),
-                        isDense: true,
-                      ),
+          Card(
+            child: Column(
+              children: [
+                CheckboxListTile(
+                  title: const Text("多轮循环"),
+                  subtitle: const Text("勾选后，所有轮次将循环重复"),
+                  value: _multiCycle,
+                  onChanged: (v) => setState(() => _multiCycle = v ?? true),
+                  controlAffinity: ListTileControlAffinity.leading,
+                ),
+                if (_multiCycle)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                    child: Row(
+                      children: [
+                        const Text("循环轮数："),
+                        const SizedBox(width: 12),
+                        SizedBox(
+                          width: 80,
+                          child: TextField(
+                            controller: _cycleController,
+                            keyboardType: TextInputType.number,
+                            textAlign: TextAlign.center,
+                            decoration: const InputDecoration(
+                              isDense: true,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                ],
-              ),
+              ],
             ),
+          ),
         ],
       ),
     );
@@ -177,6 +185,7 @@ class _RoundCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       child: Padding(
@@ -186,15 +195,14 @@ class _RoundCard extends StatelessWidget {
           children: [
             Row(
               children: [
-                Text("\u7b2c ${roundIndex + 1} \u7ec4",
+                Text("第 ${roundIndex + 1} 组",
                   style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
                 const Spacer(),
                 if (canRemove)
                   TextButton.icon(
                     onPressed: onRemove,
-                    icon: const Icon(Icons.delete_outline, size: 18),
-                    label: const Text("\u5220\u9664\u672c\u7ec4"),
-                    style: TextButton.styleFrom(foregroundColor: Colors.red),
+                    icon: Icon(Icons.delete_outline, size: 18, color: cs.error),
+                    label: Text("删除本组", style: TextStyle(color: cs.error)),
                   ),
               ],
             ),
@@ -206,7 +214,7 @@ class _RoundCard extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             _DurationRow(
-              label: "\u4f11\u606f",
+              label: "休息",
               value: round.breakMinutes,
               onChanged: onBreakChanged,
             ),
@@ -234,7 +242,7 @@ class _DurationRow extends StatelessWidget {
       children: [
         SizedBox(
           width: 60,
-          child: Text("$label\uff1a", style: const TextStyle(fontSize: 16)),
+          child: Text("$label：", style: const TextStyle(fontSize: 16)),
         ),
         IconButton(
           icon: const Icon(Icons.remove_circle_outline),
@@ -252,7 +260,7 @@ class _DurationRow extends StatelessWidget {
           icon: const Icon(Icons.add_circle_outline),
           onPressed: () => onChanged(value + 1),
         ),
-        const Text("\u5206\u949f"),
+        const Text("分钟"),
       ],
     );
   }

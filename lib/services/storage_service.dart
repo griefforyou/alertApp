@@ -10,6 +10,7 @@ class StorageService {
   static const _sessionFile = 'current_session.json';
   static const _todayRecordFile = 'today_record.json';
   static const _profilesFile = 'timer_profiles.json';
+  static const _themeModeFile = 'theme_mode.json';
 
   Future<Directory> get _storageDir => getApplicationDocumentsDirectory();
 
@@ -95,6 +96,29 @@ class StorageService {
       await file.writeAsString(jsonEncode(profiles.map((p) => p.toJson()).toList()));
     } catch (e) {
       debugPrint('Failed to save profiles: $e');
+    }
+  }
+
+  Future<String> loadThemeMode() async {
+    try {
+      final dir = await _storageDir;
+      final file = File('${dir.path}/$_themeModeFile');
+      if (!await file.exists()) return 'system';
+      final json = jsonDecode(await file.readAsString()) as Map<String, dynamic>;
+      return json['mode'] as String? ?? 'system';
+    } catch (e) {
+      debugPrint('Failed to load theme mode: $e');
+      return 'system';
+    }
+  }
+
+  Future<void> saveThemeMode(String mode) async {
+    try {
+      final dir = await _storageDir;
+      final file = File('${dir.path}/$_themeModeFile');
+      await file.writeAsString(jsonEncode({'mode': mode}));
+    } catch (e) {
+      debugPrint('Failed to save theme mode: $e');
     }
   }
 }

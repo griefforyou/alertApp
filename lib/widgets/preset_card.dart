@@ -5,41 +5,42 @@ class PresetCard extends StatelessWidget {
   final TimerProfile preset;
   final String typeName;
   final VoidCallback? onTap;
-  const PresetCard({super.key, required this.preset, this.typeName = "\u5b66\u4e60", this.onTap});
+  const PresetCard({super.key, required this.preset, this.typeName = "学习", this.onTap});
 
   String get _description {
     if (preset.rounds.length == 1) {
       final r = preset.rounds[0];
-      final study = "$typeName${r.workMinutes}\u5206\u949f";
-      final rest = "\u4f11\u606f${r.breakMinutes}\u5206\u949f";
+      final study = "$typeName${r.workMinutes}分钟";
+      final rest = "休息${r.breakMinutes}分钟";
       if (preset.multiCycle && preset.totalCycles > 0) {
-        return "$study\uff0c$rest\uff0c\u5faa\u73af${preset.totalCycles}\u8f6e";
+        return "$study，$rest，循环${preset.totalCycles}轮";
       }
-      if (preset.multiCycle) return "$study\uff0c$rest\uff0c\u65e0\u9650\u5faa\u73af";
-      return "$study\uff0c$rest";
+      if (preset.multiCycle) return "$study，$rest，无限循环";
+      return "$study，$rest";
     }
     final roundsDesc = preset.rounds.asMap().entries.map((e) {
       final i = e.key + 1;
       final r = e.value;
-      final unit = preset.multiCycle ? "\u8f6e" : "\u7ec4";
-      return "\u7b2c${i}$unit:$typeName${r.workMinutes}\u5206\u2192\u4f11\u606f${r.breakMinutes}\u5206";
+      final unit = preset.multiCycle ? "轮" : "组";
+      return "第${i}$unit:$typeName${r.workMinutes}分→休息${r.breakMinutes}分";
     }).join(" | ");
-    if (preset.multiCycle && preset.totalCycles > 0) return "$roundsDesc\uff0c\u5faa\u73af${preset.totalCycles}\u8f6e";
-    if (preset.multiCycle) return "$roundsDesc\uff0c\u65e0\u9650\u5faa\u73af";
+    if (preset.multiCycle && preset.totalCycles > 0) return "$roundsDesc，循环${preset.totalCycles}轮";
+    if (preset.multiCycle) return "$roundsDesc，无限循环";
     return roundsDesc;
   }
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
     return Card(
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(16),
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Row(
             children: [
-              const Icon(Icons.schedule, color: Color(0xFF2196F3)),
+              Icon(Icons.schedule, color: cs.primary),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
@@ -52,12 +53,12 @@ class PresetCard extends StatelessWidget {
                     const SizedBox(height: 4),
                     Text(
                       _description,
-                      style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+                      style: TextStyle(fontSize: 14, color: cs.onSurface.withValues(alpha: 0.6)),
                     ),
                   ],
                 ),
               ),
-              const Icon(Icons.chevron_right, color: Colors.grey),
+              Icon(Icons.chevron_right, color: cs.onSurface.withValues(alpha: 0.4)),
             ],
           ),
         ),

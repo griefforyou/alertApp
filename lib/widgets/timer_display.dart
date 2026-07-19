@@ -67,15 +67,23 @@ class TimerDisplay extends StatelessWidget {
     return '${group}第 $currentCycle/$totalCycles 轮';
   }
 
+  Color _colorForPhase(ColorScheme cs) {
+    switch (phase) {
+      case Phase.idle:
+        return cs.outline;
+      case Phase.learning:
+        return cs.primary;
+      case Phase.breaking:
+        return cs.tertiary;
+      case Phase.finished:
+        return cs.primary;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    final color = phase == Phase.idle
-        ? const Color(0xFF9E9E9E)
-        : phase == Phase.learning
-            ? const Color(0xFF2196F3)
-            : phase == Phase.breaking
-                ? const Color(0xFF4CAF50)
-                : const Color(0xFF9E9E9E);
+    final cs = Theme.of(context).colorScheme;
+    final color = _colorForPhase(cs);
 
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,

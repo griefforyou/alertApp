@@ -21,26 +21,27 @@ class StatsCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Row(
           children: [
-            const Icon(Icons.bar_chart, color: Color(0xFF2196F3)),
+            Icon(Icons.bar_chart, color: cs.primary),
             const SizedBox(width: 12),
-            Text('今日$typeName: ', style: TextStyle(fontSize: 16)),
+            Text('今日$typeName: ', style: TextStyle(fontSize: 16, color: cs.onSurface)),
             Text(
               _formattedTime,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
-                color: Color(0xFF2196F3),
+                color: cs.primary,
               ),
             ),
             const Spacer(),
             Text(
               '完成 $completedCycles 轮',
-              style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+              style: TextStyle(fontSize: 14, color: cs.onSurface.withValues(alpha: 0.6)),
             ),
           ],
         ),

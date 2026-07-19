@@ -29,7 +29,8 @@ class PhaseOverlay extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = phase == Phase.learning ? const Color(0xFF2196F3) : const Color(0xFF4CAF50);
+    final cs = Theme.of(context).colorScheme;
+    final color = phase == Phase.learning ? cs.primary : cs.tertiary;
     return PopScope(
       canPop: !modal,
       child: Material(
@@ -54,7 +55,11 @@ class PhaseOverlay extends StatelessWidget {
                 const SizedBox(height: 48),
                 ElevatedButton(
                   onPressed: onDismiss,
-                  style: ElevatedButton.styleFrom(backgroundColor: Colors.white, foregroundColor: color, padding: const EdgeInsets.symmetric(horizontal: 48, vertical: 16)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.white,
+                    foregroundColor: color,
+                    padding: const EdgeInsets.symmetric(horizontal: 48, vertical: 16),
+                  ),
                   child: const Text('知道了'),
                 ),
               ],
