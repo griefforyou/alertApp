@@ -4,6 +4,8 @@ import '../models/session_state.dart';
 class TimerDisplay extends StatelessWidget {
   final Duration remaining;
   final Phase phase;
+  final int currentRound;
+  final int totalRounds;
   final int currentCycle;
   final int totalCycles;
   final double progress;
@@ -15,6 +17,8 @@ class TimerDisplay extends StatelessWidget {
     super.key,
     required this.remaining,
     required this.phase,
+    this.currentRound = 1,
+    this.totalRounds = 1,
     required this.currentCycle,
     required this.totalCycles,
     required this.progress,
@@ -46,14 +50,21 @@ class TimerDisplay extends StatelessWidget {
     }
   }
 
+  String get _groupText {
+    if (totalRounds <= 1) return '';
+    return '第 $currentRound/$totalRounds 组 · ';
+  }
+
   String get _cycleText {
     if (phase == Phase.idle) {
-      if (totalCycles == 0) return '$typeName$studyMinutes分 · 休息$breakMinutes分 · 无限循环';
-      return '$typeName$studyMinutes分 · 休息$breakMinutes分 · $totalCycles轮';
+      final roundsInfo = totalRounds > 1 ? '共${totalRounds}组 · ' : '';
+      if (totalCycles == 0) return '${roundsInfo}${typeName}${studyMinutes}分 · 休息${breakMinutes}分 · 无限循环';
+      return '${roundsInfo}${typeName}${studyMinutes}分 · 休息${breakMinutes}分 · ${totalCycles}轮';
     }
     if (phase == Phase.finished) return '所有轮次已完成';
-    if (totalCycles == 0) return '第 $currentCycle 轮（无限循环）';
-    return '第 $currentCycle/$totalCycles 轮';
+    final group = _groupText;
+    if (totalCycles == 0) return '${group}第 $currentCycle 轮（无限循环）';
+    return '${group}第 $currentCycle/$totalCycles 轮';
   }
 
   @override

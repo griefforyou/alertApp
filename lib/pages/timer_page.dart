@@ -1,16 +1,16 @@
-import 'package:flutter/material.dart';
-import '../models/session_state.dart';
-import '../models/study_preset.dart';
-import '../models/daily_record.dart';
-import '../models/timer_profile.dart';
-import '../services/timer_service.dart';
-import '../services/notification_service.dart';
-import '../services/storage_service.dart';
-import '../widgets/timer_display.dart';
-import '../widgets/control_buttons.dart';
-import '../widgets/preset_card.dart';
-import '../widgets/stats_card.dart';
-import '../widgets/phase_overlay.dart';
+import "package:flutter/material.dart";
+import "../models/session_state.dart";
+import "../models/daily_record.dart";
+import "../models/timer_profile.dart";
+import "../services/timer_service.dart";
+import "../services/notification_service.dart";
+import "../services/storage_service.dart";
+import "../widgets/timer_display.dart";
+import "../widgets/control_buttons.dart";
+import "../widgets/preset_card.dart";
+import "../widgets/stats_card.dart";
+import "../widgets/phase_overlay.dart";
+import "preset_edit_page.dart";
 
 class TimerPage extends StatefulWidget {
   const TimerPage({super.key});
@@ -24,8 +24,8 @@ class _TimerPageState extends State<TimerPage> {
   late final NotificationService _notificationService;
   late final StorageService _storageService;
   bool _showOverlay = false;
-  String _overlayTitle = '';
-  String _overlayBody = '';
+  String _overlayTitle = "";
+  String _overlayBody = "";
   bool _overlayModal = false;
   Map<String, int> _statsSeconds = {};
   Map<String, int> _statsCycles = {};
@@ -104,25 +104,30 @@ class _TimerPageState extends State<TimerPage> {
     await _storageService.saveTodayRecord(record);
   }
 
+  String _groupText(SessionState s) {
+    if (s.rounds.length <= 1) return '';
+    return '第 ${s.roundIndex + 1} 组 · ';
+  }
+
   void _onPhaseChanged() {
     if (!mounted) return;
     final s = _timerService.state;
     if (s == null) return;
     setState(() {
       if (s.currentPhase == Phase.breaking) {
-        _overlayTitle = '$_typeName结束！';
-        _overlayBody = '休息 ${s.breakMinutes} 分钟';
+        _overlayTitle = "$_typeName结束！";
+        _overlayBody = "${_groupText(s)}休息 ${s.breakMinutes} 分钟";
         _overlayModal = false;
         _addStats(s.studyMinutes * 60, 1);
         _saveTodayRecord();
       } else if (s.currentPhase == Phase.learning) {
-        _overlayTitle = '休息结束！';
-        _overlayBody = '开始第 ${s.currentCycle} 轮$_typeName';
+        _overlayTitle = "休息结束！";
+        _overlayBody = "${_groupText(s)}开始第 ${s.currentCycle} 轮$_typeName";
         _overlayModal = true;
         _timerService.pause();
       } else if (s.currentPhase == Phase.finished) {
-        _overlayTitle = '全部完成！';
-        _overlayBody = '今天的$_typeName任务已完成';
+        _overlayTitle = "全部完成！";
+        _overlayBody = "今天的$_typeName任务已完成";
         _overlayModal = false;
         _addStats(s.studyMinutes * 60, 1);
         _saveTodayRecord();
@@ -144,19 +149,19 @@ class _TimerPageState extends State<TimerPage> {
     final name = await showDialog<String>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('自定义类型'),
+        title: const Text("自定义类型"),
         content: TextField(
           controller: nameController,
           autofocus: true,
           decoration: const InputDecoration(
-            labelText: '名称',
-            hintText: '例如：跑步、阅读、瑜伽',
+            labelText: "名称",
+            hintText: "例如：跑步、阅读、瑜伽",
           ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('取消'),
+            child: const Text("取消"),
           ),
           TextButton(
             onPressed: () {
@@ -164,7 +169,7 @@ class _TimerPageState extends State<TimerPage> {
               if (v.isEmpty) return;
               Navigator.of(ctx).pop(v);
             },
-            child: const Text('添加'),
+            child: const Text("添加"),
           ),
         ],
       ),
@@ -174,8 +179,7 @@ class _TimerPageState extends State<TimerPage> {
       id: DateTime.now().millisecondsSinceEpoch.toString(),
       category: TimerCategory.custom,
       customName: name,
-      studyMinutes: 2,
-      breakMinutes: 1,
+      multiCycle: true,
       totalCycles: 4,
     );
     setState(() {
@@ -191,16 +195,16 @@ class _TimerPageState extends State<TimerPage> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('删除类型'),
-        content: Text('确定要删除「${profile.displayName}」吗？'),
+        title: const Text("删除类型"),
+        content: Text("确定要删除「${profile.displayName}」吗？"),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('取消'),
+            child: const Text("取消"),
           ),
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('删除'),
+            child: const Text("删除"),
           ),
         ],
       ),
@@ -214,14 +218,7 @@ class _TimerPageState extends State<TimerPage> {
   }
 
   Future<void> _handleStart() async {
-    final preset = StudyPreset(
-      id: _profile.id,
-      name: _profile.displayName,
-      studyMinutes: _profile.studyMinutes,
-      breakMinutes: _profile.breakMinutes,
-      totalCycles: _profile.totalCycles,
-    );
-    await _timerService.start(preset);
+    await _timerService.start(_profile);
     if (_timerService.state != null) {
       await _notificationService.schedulePhaseNotifications(
         _timerService.state!,
@@ -245,16 +242,16 @@ class _TimerPageState extends State<TimerPage> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('确认结束'),
-        content: Text('当前$_typeName进度将丢失，确定要结束吗？'),
+        title: const Text("确认结束"),
+        content: Text("当前$_typeName进度将丢失，确定要结束吗？"),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('取消'),
+            child: const Text("取消"),
           ),
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('结束'),
+            child: const Text("结束"),
           ),
         ],
       ),
@@ -278,6 +275,22 @@ class _TimerPageState extends State<TimerPage> {
     setState(() {});
   }
 
+  Future<void> _handleEditProfile() async {
+    final result = await Navigator.push<TimerProfile>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => PresetEditPage(profile: _profile),
+      ),
+    );
+    if (result == null || !mounted) return;
+    final idx = _profiles.indexWhere((p) => p.id == result.id);
+    if (idx < 0) return;
+    setState(() {
+      _profiles[idx] = result;
+    });
+    await _storageService.saveProfiles(_profiles);
+  }
+
   @override
   void dispose() {
     _timerService.dispose();
@@ -293,7 +306,7 @@ class _TimerPageState extends State<TimerPage> {
     final isFinished = _timerService.isFinished;
 
     final bgColor = state?.currentPhase == Phase.breaking
-        ? const Color(0xFFF1F8E9)
+        ? const Color(0xFFF1E8F9)
         : const Color(0xFFE3F2FD);
 
     return Stack(
@@ -301,7 +314,7 @@ class _TimerPageState extends State<TimerPage> {
         Scaffold(
           backgroundColor: bgColor,
           appBar: AppBar(
-            title: const Text('计时器'),
+            title: const Text("计时器"),
             centerTitle: true,
             elevation: 0,
             backgroundColor: Colors.transparent,
@@ -322,7 +335,7 @@ class _TimerPageState extends State<TimerPage> {
                           return Center(
                             child: ActionChip(
                               avatar: const Icon(Icons.add, size: 18),
-                              label: const Text('添加'),
+                              label: const Text("添加"),
                               onPressed: _timerService.state != null ? null : _handleAddProfile,
                             ),
                           );
@@ -355,6 +368,8 @@ class _TimerPageState extends State<TimerPage> {
                     TimerDisplay(
                       remaining: remaining,
                       phase: state.currentPhase,
+                      currentRound: state.roundIndex + 1,
+                      totalRounds: state.rounds.length,
                       currentCycle: state.currentCycle,
                       totalCycles: state.totalCycles,
                       progress: _timerService.progress,
@@ -364,6 +379,8 @@ class _TimerPageState extends State<TimerPage> {
                     TimerDisplay(
                       remaining: Duration.zero,
                       phase: Phase.idle,
+                      currentRound: 1,
+                      totalRounds: _profile.rounds.length,
                       currentCycle: 0,
                       totalCycles: _profile.totalCycles,
                       progress: 0,
@@ -383,14 +400,9 @@ class _TimerPageState extends State<TimerPage> {
                   ),
                   const Spacer(flex: 1),
                   PresetCard(
-                    preset: StudyPreset(
-                      id: _profile.id,
-                      name: _profile.displayName,
-                      studyMinutes: _profile.studyMinutes,
-                      breakMinutes: _profile.breakMinutes,
-                      totalCycles: _profile.totalCycles,
-                    ),
+                    preset: _profile,
                     typeName: _typeName,
+                    onTap: _timerService.state != null ? null : _handleEditProfile,
                   ),
                   const SizedBox(height: 12),
                   StatsCard(

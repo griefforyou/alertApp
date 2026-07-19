@@ -1,9 +1,12 @@
+import 'round_config.dart';
+
 enum Phase { idle, learning, breaking, finished }
 
 class SessionState {
   final DateTime startTime;
-  final int studyMinutes;
-  final int breakMinutes;
+  final List<RoundConfig> rounds;
+  final int roundIndex;
+  final bool multiCycle;
   final int totalCycles; // 0 = 无限
   final int currentCycle;
   final Phase currentPhase;
@@ -13,8 +16,9 @@ class SessionState {
 
   const SessionState({
     required this.startTime,
-    required this.studyMinutes,
-    required this.breakMinutes,
+    required this.rounds,
+    required this.roundIndex,
+    required this.multiCycle,
     required this.totalCycles,
     required this.currentCycle,
     required this.currentPhase,
@@ -23,10 +27,14 @@ class SessionState {
     this.elapsedBeforePause = Duration.zero,
   });
 
+  int get studyMinutes => rounds.isNotEmpty ? rounds[roundIndex.clamp(0, rounds.length - 1)].workMinutes : 0;
+  int get breakMinutes => rounds.isNotEmpty ? rounds[roundIndex.clamp(0, rounds.length - 1)].breakMinutes : 0;
+
   SessionState copyWith({
     DateTime? startTime,
-    int? studyMinutes,
-    int? breakMinutes,
+    List<RoundConfig>? rounds,
+    int? roundIndex,
+    bool? multiCycle,
     int? totalCycles,
     int? currentCycle,
     Phase? currentPhase,
@@ -36,8 +44,9 @@ class SessionState {
   }) {
     return SessionState(
       startTime: startTime ?? this.startTime,
-      studyMinutes: studyMinutes ?? this.studyMinutes,
-      breakMinutes: breakMinutes ?? this.breakMinutes,
+      rounds: rounds ?? this.rounds,
+      roundIndex: roundIndex ?? this.roundIndex,
+      multiCycle: multiCycle ?? this.multiCycle,
       totalCycles: totalCycles ?? this.totalCycles,
       currentCycle: currentCycle ?? this.currentCycle,
       currentPhase: currentPhase ?? this.currentPhase,
@@ -49,8 +58,9 @@ class SessionState {
 
   Map<String, dynamic> toJson() => {
     'startTime': startTime.toIso8601String(),
-    'studyMinutes': studyMinutes,
-    'breakMinutes': breakMinutes,
+    'rounds': rounds.map((r) => r.toJson()).toList(),
+    'roundIndex': roundIndex,
+    'multiCycle': multiCycle,
     'totalCycles': totalCycles,
     'currentCycle': currentCycle,
     'currentPhase': currentPhase.name,
@@ -59,15 +69,27 @@ class SessionState {
     'elapsedBeforePauseMillis': elapsedBeforePause.inMilliseconds,
   };
 
-  factory SessionState.fromJson(Map<String, dynamic> json) => SessionState(
-    startTime: DateTime.parse(json['startTime'] as String),
-    studyMinutes: json['studyMinutes'] as int,
-    breakMinutes: json['breakMinutes'] as int,
-    totalCycles: json['totalCycles'] as int,
-    currentCycle: json['currentCycle'] as int,
-    currentPhase: Phase.values.byName(json['currentPhase'] as String),
-    phaseStartTime: DateTime.parse(json['phaseStartTime'] as String),
-    isPaused: json['isPaused'] as bool? ?? false,
-    elapsedBeforePause: Duration(milliseconds: json['elapsedBeforePauseMillis'] as int? ?? 0),
-  );
+  factory SessionState.fromJson(Map<String, dynamic> json) {
+    List<RoundConfig> rounds;
+    if (json.containsKey('rounds')) {
+      rounds = (json['rounds'] as List).map((e) => RoundConfig.fromJson(e as Map<String, dynamic>)).toList();
+    } else {
+      rounds = [RoundConfig(
+        workMinutes: json['studyMinutes'] as int? ?? 0,
+        breakMinutes: json['breakMinutes'] as int? ?? 0,
+      )];
+    }
+    return SessionState(
+      startTime: DateTime.parse(json['startTime'] as String),
+      rounds: rounds,
+      roundIndex: json['roundIndex'] as int? ?? 0,
+      multiCycle: json['multiCycle'] as bool? ?? true,
+      totalCycles: json['totalCycles'] as int,
+      currentCycle: json['currentCycle'] as int,
+      currentPhase: Phase.values.byName(json['currentPhase'] as String),
+      phaseStartTime: DateTime.parse(json['phaseStartTime'] as String),
+      isPaused: json['isPaused'] as bool? ?? false,
+      elapsedBeforePause: Duration(milliseconds: json['elapsedBeforePauseMillis'] as int? ?? 0),
+    );
+  }
 }

@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:study_timer/models/session_state.dart';
+import 'package:study_timer/models/round_config.dart';
 import 'package:study_timer/models/daily_record.dart';
 import 'package:study_timer/services/storage_service.dart';
 import 'package:path_provider_platform_interface/path_provider_platform_interface.dart';
@@ -31,8 +32,9 @@ void main() {
   test('save and load session', () async {
     final session = SessionState(
       startTime: DateTime(2026, 7, 19, 20, 0),
-      studyMinutes: 45,
-      breakMinutes: 10,
+      rounds: [const RoundConfig(workMinutes: 45, breakMinutes: 10)],
+      roundIndex: 0,
+      multiCycle: true,
       totalCycles: 4,
       currentCycle: 1,
       currentPhase: Phase.learning,
@@ -50,8 +52,9 @@ void main() {
   test('clear session removes file', () async {
     final session = SessionState(
       startTime: DateTime(2026, 7, 19, 20, 0),
-      studyMinutes: 45,
-      breakMinutes: 10,
+      rounds: [const RoundConfig(workMinutes: 45, breakMinutes: 10)],
+      roundIndex: 0,
+      multiCycle: true,
       totalCycles: 4,
       currentCycle: 1,
       currentPhase: Phase.learning,
@@ -76,7 +79,6 @@ void main() {
     PathProviderPlatform.instance = mock;
     final file = File('${dir.path}/current_session.json');
     await file.writeAsString('not valid json');
-    // Use a storage that points to the same dir
     final result = await storage.loadSession();
     expect(result, isNull);
   });

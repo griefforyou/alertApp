@@ -1,8 +1,8 @@
-import 'dart:async';
-import 'package:flutter/foundation.dart';
-import '../models/session_state.dart';
-import '../models/study_preset.dart';
-import 'storage_service.dart';
+import "dart:async";
+import "package:flutter/foundation.dart";
+import "../models/session_state.dart";
+import "../models/timer_profile.dart";
+import "storage_service.dart";
 
 class TimerService extends ChangeNotifier {
   final StorageService _storage;
@@ -34,18 +34,19 @@ class TimerService extends ChangeNotifier {
 
   VoidCallback? onPhaseChanged;
 
-  Future<void> start(StudyPreset preset) async {
+  Future<void> start(TimerProfile profile) async {
     final now = DateTime.now();
     _state = SessionState(
       startTime: now,
-      studyMinutes: preset.studyMinutes,
-      breakMinutes: preset.breakMinutes,
-      totalCycles: preset.totalCycles,
+      rounds: List.from(profile.rounds),
+      roundIndex: 0,
+      multiCycle: profile.multiCycle,
+      totalCycles: profile.totalCycles,
       currentCycle: 1,
       currentPhase: Phase.learning,
       phaseStartTime: now,
     );
-    _remaining = Duration(minutes: preset.studyMinutes);
+    _remaining = Duration(minutes: profile.rounds[0].workMinutes);
     await _storage.saveSession(_state!);
     _startTick();
     notifyListeners();
@@ -73,30 +74,54 @@ class TimerService extends ChangeNotifier {
     if (_state == null) return;
 
     if (_state!.currentPhase == Phase.learning) {
-      final isLastCycle =
-          _state!.totalCycles > 0 && _state!.currentCycle >= _state!.totalCycles;
-      if (isLastCycle) {
-        _state = _state!.copyWith(currentPhase: Phase.finished);
-        _tickTimer?.cancel();
-        _tickTimer = null;
-        _storage.clearSession();
-      } else {
-        _state = _state!.copyWith(
+      final s = _state!;
+      final isLastRound = s.roundIndex >= s.rounds.length - 1;
+      final isLastCycle = s.totalCycles > 0 && s.currentCycle >= s.totalCycles;
+      final hasNextLearning =
+          !isLastRound || (s.multiCycle && !isLastCycle);
+
+      if (hasNextLearning) {
+        _state = s.copyWith(
           currentPhase: Phase.breaking,
           phaseStartTime: DateTime.now(),
         );
         _remaining = Duration(minutes: _state!.breakMinutes);
-      }
-    } else if (_state!.currentPhase == Phase.breaking) {
-      final nextCycle = _state!.currentCycle + 1;
-      if (_state!.totalCycles > 0 && nextCycle > _state!.totalCycles) {
-        _state = _state!.copyWith(currentPhase: Phase.finished);
+      } else {
+        _state = s.copyWith(currentPhase: Phase.finished);
         _tickTimer?.cancel();
         _tickTimer = null;
         _storage.clearSession();
+      }
+    } else if (_state!.currentPhase == Phase.breaking) {
+      final s = _state!;
+      final nextRoundIdx = s.roundIndex + 1;
+
+      if (nextRoundIdx >= s.rounds.length) {
+        if (s.multiCycle) {
+          final nextCycle = s.currentCycle + 1;
+          if (s.totalCycles > 0 && nextCycle > s.totalCycles) {
+            _state = s.copyWith(currentPhase: Phase.finished);
+            _tickTimer?.cancel();
+            _tickTimer = null;
+            _storage.clearSession();
+          } else {
+            _state = s.copyWith(
+              roundIndex: 0,
+              currentCycle: nextCycle,
+              currentPhase: Phase.learning,
+              phaseStartTime: DateTime.now(),
+            );
+            _remaining = Duration(minutes: _state!.studyMinutes);
+          }
+        } else {
+          _state = s.copyWith(currentPhase: Phase.finished);
+          _tickTimer?.cancel();
+          _tickTimer = null;
+          _storage.clearSession();
+        }
       } else {
-        _state = _state!.copyWith(
-          currentCycle: nextCycle,
+        _state = s.copyWith(
+          roundIndex: nextRoundIdx,
           currentPhase: Phase.learning,
           phaseStartTime: DateTime.now(),
         );
@@ -105,7 +130,9 @@ class TimerService extends ChangeNotifier {
     }
 
     onPhaseChanged?.call();
-    _storage.saveSession(_state!);
+    if (_state != null && _state!.currentPhase != Phase.finished) {
+      _storage.saveSession(_state!);
+    }
     notifyListeners();
   }
 

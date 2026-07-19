@@ -1,17 +1,32 @@
-import 'package:flutter/material.dart';
-import '../models/study_preset.dart';
+import "package:flutter/material.dart";
+import "../models/timer_profile.dart";
 
 class PresetCard extends StatelessWidget {
-  final StudyPreset preset;
+  final TimerProfile preset;
   final String typeName;
   final VoidCallback? onTap;
-  const PresetCard({super.key, required this.preset, this.typeName = '学习', this.onTap});
+  const PresetCard({super.key, required this.preset, this.typeName = "\u5b66\u4e60", this.onTap});
 
   String get _description {
-    final study = '$typeName${preset.studyMinutes}分钟';
-    final rest = '休息${preset.breakMinutes}分钟';
-    final cycles = preset.totalCycles > 0 ? '循环${preset.totalCycles}轮' : '无限循环';
-    return '$study，$rest，$cycles';
+    if (preset.rounds.length == 1) {
+      final r = preset.rounds[0];
+      final study = "$typeName${r.workMinutes}\u5206\u949f";
+      final rest = "\u4f11\u606f${r.breakMinutes}\u5206\u949f";
+      if (preset.multiCycle && preset.totalCycles > 0) {
+        return "$study\uff0c$rest\uff0c\u5faa\u73af${preset.totalCycles}\u8f6e";
+      }
+      if (preset.multiCycle) return "$study\uff0c$rest\uff0c\u65e0\u9650\u5faa\u73af";
+      return "$study\uff0c$rest";
+    }
+    final roundsDesc = preset.rounds.asMap().entries.map((e) {
+      final i = e.key + 1;
+      final r = e.value;
+      final unit = preset.multiCycle ? "\u8f6e" : "\u7ec4";
+      return "\u7b2c${i}$unit:$typeName${r.workMinutes}\u5206\u2192\u4f11\u606f${r.breakMinutes}\u5206";
+    }).join(" | ");
+    if (preset.multiCycle && preset.totalCycles > 0) return "$roundsDesc\uff0c\u5faa\u73af${preset.totalCycles}\u8f6e";
+    if (preset.multiCycle) return "$roundsDesc\uff0c\u65e0\u9650\u5faa\u73af";
+    return roundsDesc;
   }
 
   @override
@@ -31,7 +46,7 @@ class PresetCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      preset.name,
+                      preset.displayName,
                       style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
                     ),
                     const SizedBox(height: 4),

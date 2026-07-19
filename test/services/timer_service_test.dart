@@ -1,7 +1,8 @@
 import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:study_timer/models/session_state.dart';
-import 'package:study_timer/models/study_preset.dart';
+import 'package:study_timer/models/timer_profile.dart';
+import 'package:study_timer/models/round_config.dart';
 import 'package:study_timer/services/timer_service.dart';
 import 'package:study_timer/services/storage_service.dart';
 import 'package:path_provider_platform_interface/path_provider_platform_interface.dart';
@@ -29,14 +30,22 @@ void main() {
     timerService.dispose();
   });
 
+  TimerProfile _profile({int studyMinutes = 45, int breakMinutes = 10, int totalCycles = 4}) {
+    return TimerProfile(
+      id: 'test',
+      category: TimerCategory.custom,
+      customName: 'Test',
+      rounds: [RoundConfig(workMinutes: studyMinutes, breakMinutes: breakMinutes)],
+      multiCycle: true,
+      totalCycles: totalCycles,
+    );
+  }
+
   group('start', () {
     test('creates session in learning phase', () async {
-      final preset = StudyPreset(
-        id: 'test', name: 'Test',
-        studyMinutes: 45, breakMinutes: 10, totalCycles: 4,
-      );
+      final profile = _profile();
 
-      await timerService.start(preset);
+      await timerService.start(profile);
 
       expect(timerService.state, isNotNull);
       expect(timerService.state!.currentPhase, Phase.learning);
@@ -45,36 +54,27 @@ void main() {
     });
 
     test('isRunning returns true after start', () async {
-      final preset = StudyPreset(
-        id: 'test', name: 'Test',
-        studyMinutes: 25, breakMinutes: 5, totalCycles: 4,
-      );
+      final profile = _profile(studyMinutes: 25, breakMinutes: 5);
 
-      await timerService.start(preset);
+      await timerService.start(profile);
       expect(timerService.isRunning, true);
     });
   });
 
   group('pause and resume', () {
     test('pause sets isPaused', () async {
-      final preset = StudyPreset(
-        id: 'test', name: 'Test',
-        studyMinutes: 25, breakMinutes: 5, totalCycles: 4,
-      );
+      final profile = _profile(studyMinutes: 25, breakMinutes: 5);
 
-      await timerService.start(preset);
+      await timerService.start(profile);
       timerService.pause();
 
       expect(timerService.state!.isPaused, true);
     });
 
     test('resume clears isPaused', () async {
-      final preset = StudyPreset(
-        id: 'test', name: 'Test',
-        studyMinutes: 25, breakMinutes: 5, totalCycles: 4,
-      );
+      final profile = _profile(studyMinutes: 25, breakMinutes: 5);
 
-      await timerService.start(preset);
+      await timerService.start(profile);
       timerService.pause();
       timerService.resume();
 
@@ -84,12 +84,9 @@ void main() {
 
   group('stop', () {
     test('clears state and stops timer', () async {
-      final preset = StudyPreset(
-        id: 'test', name: 'Test',
-        studyMinutes: 25, breakMinutes: 5, totalCycles: 4,
-      );
+      final profile = _profile(studyMinutes: 25, breakMinutes: 5);
 
-      await timerService.start(preset);
+      await timerService.start(profile);
       await timerService.stop();
 
       expect(timerService.state, isNull);
@@ -114,8 +111,9 @@ void main() {
       final now = DateTime.now();
       await storageService.saveSession(SessionState(
         startTime: now.subtract(const Duration(minutes: 10)),
-        studyMinutes: 45,
-        breakMinutes: 10,
+        rounds: [const RoundConfig(workMinutes: 45, breakMinutes: 10)],
+        roundIndex: 0,multiCycle: true,
+    
         totalCycles: 4,
         currentCycle: 1,
         currentPhase: Phase.learning,
@@ -135,8 +133,9 @@ void main() {
     test('restores finished session', () async {
       await storageService.saveSession(SessionState(
         startTime: DateTime.now().subtract(const Duration(hours: 2)),
-        studyMinutes: 45,
-        breakMinutes: 10,
+        rounds: [const RoundConfig(workMinutes: 45, breakMinutes: 10)],
+        roundIndex: 0,multiCycle: true,
+    
         totalCycles: 4,
         currentCycle: 4,
         currentPhase: Phase.finished,
@@ -156,8 +155,9 @@ void main() {
       final pausedRemaining = const Duration(minutes: 30);
       await storageService.saveSession(SessionState(
         startTime: now.subtract(const Duration(minutes: 15)),
-        studyMinutes: 45,
-        breakMinutes: 10,
+        rounds: [const RoundConfig(workMinutes: 45, breakMinutes: 10)],
+        roundIndex: 0,multiCycle: true,
+    
         totalCycles: 4,
         currentCycle: 1,
         currentPhase: Phase.learning,
@@ -182,17 +182,19 @@ void main() {
     });
 
     test('returns false after start', () async {
-      await timerService.start(const StudyPreset(
-        id: 'test', name: 'Test', studyMinutes: 45, breakMinutes: 10, totalCycles: 4,
-      ));
+      await timerService.start(_profile());
       expect(timerService.isFinished, false);
     });
 
     test('returns true after restore of finished session', () async {
       await storageService.saveSession(SessionState(
         startTime: DateTime.now(),
-        studyMinutes: 45, breakMinutes: 10, totalCycles: 4,
-        currentCycle: 4, currentPhase: Phase.finished,
+        rounds: [const RoundConfig(workMinutes: 45, breakMinutes: 10)],
+        roundIndex: 0,multiCycle: true,
+    
+        totalCycles: 4,
+        currentCycle: 4,
+        currentPhase: Phase.finished,
         phaseStartTime: DateTime.now(),
       ));
 
@@ -210,9 +212,7 @@ void main() {
     });
 
     test('returns 0.0 immediately after start', () async {
-      await timerService.start(const StudyPreset(
-        id: 'test', name: 'Test', studyMinutes: 45, breakMinutes: 10, totalCycles: 4,
-      ));
+      await timerService.start(_profile());
       expect(timerService.progress, closeTo(0.0, 0.01));
     });
   });
@@ -222,8 +222,9 @@ void main() {
       final now = DateTime.now();
       await storageService.saveSession(SessionState(
         startTime: now.subtract(const Duration(minutes: 50)),
-        studyMinutes: 45,
-        breakMinutes: 10,
+        rounds: [const RoundConfig(workMinutes: 45, breakMinutes: 10)],
+        roundIndex: 0,multiCycle: true,
+    
         totalCycles: 4,
         currentCycle: 1,
         currentPhase: Phase.learning,

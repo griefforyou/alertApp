@@ -1,226 +1,255 @@
-# 学习循环计时器 App — 设计文档
+# 学习计时器 — 设计方案
 
-日期: 2026-07-19
-状态: 设计确认，待实现
+## 架构概览
 
----
+```
+lib/
+├── main.dart                          # 入口，竖屏锁定，Material 3
+├── models/
+│   ├── models.dart                    # 桶导出
+│   ├── round_config.dart              # 单组 (work+break)
+│   ├── timer_profile.dart             # 计时方案 (含多组/多轮循环)
+│   ├── session_state.dart             # 进行中的会话快照
+│   ├── study_preset.dart              # 旧版扁平方案 (生产未使用)
+│   ├── daily_record.dart              # 按日聚合统计
+│   └── study_record.dart              # 单次记录 (未持久化)
+├── services/
+│   ├── timer_service.dart             # 计时引擎 (ChangeNotifier)
+│   ├── storage_service.dart           # JSON 文件持久化
+│   └── notification_service.dart      # 本地通知调度
+├── pages/
+│   ├── timer_page.dart                # 主页面
+│   └── preset_edit_page.dart          # 方案编辑页
+└── widgets/
+    ├── timer_display.dart             # 倒计时显示
+    ├── control_buttons.dart           # 开始/暂停/继续/结束
+    ├── preset_card.dart               # 方案概要卡片
+    ├── stats_card.dart                # 今日统计卡片
+    └── phase_overlay.dart             # 阶段切换遮罩层
+```
 
-## 1. 概述
+## 数据模型
 
-一个跨平台（iOS + Android）的学习循环计时器 App，用户可以设定学习时长→休息时长→循环 N 轮，到点时通过系统通知+声音+前台全屏文字提醒。采用渐进式交付策略：MVP 先出核心计时功能，后续迭代添加预设管理和完整统计。
+### `TimerCategory` 枚举
+- `study` → 显示名 "学习"
+- `training` → 显示名 "训练"
+- `custom` → 显示名 `customName` 或 "自定义"
 
----
+### `RoundConfig`
+| 字段 | 类型 | 默认值 | 说明 |
+|------|------|--------|------|
+| `workMinutes` | `int` | 2 | 学习/训练时长（分） |
+| `breakMinutes` | `int` | 1 | 休息时长（分） |
 
-## 2. 技术选型
+方法：`toJson()`、`fromJson()`、`copyWith()`
 
-| 项目 | 选择 | 理由 |
+### `TimerProfile`
+| 字段 | 类型 | 说明 |
 |------|------|------|
-| 框架 | Flutter | 一套代码同时发布 iOS 和 Android |
-| 状态管理 | ChangeNotifier + ListenableBuilder | 零外部依赖，MVP 够用 |
-| 本地存储 | JSON 文件（path_provider） | 简单可靠，后续可平滑迁移到 SQLite |
-| 通知 | flutter_local_notifications | 成熟稳定，支持 Android 和 iOS |
-| 图表（第三阶段） | fl_chart | 轻量，Flutter 生态首选 |
+| `id` | `String` | 唯一标识 (内置 `builtin_study`/`builtin_training`；自定义用时间戳) |
+| `category` | `TimerCategory` | 类型 |
+| `customName` | `String?` | 自定义类型名称 |
+| `rounds` | `List<RoundConfig>` | 第 1 组、第 2 组…… |
+| `multiCycle` | `bool` | 是否启用多轮循环 |
+| `totalCycles` | `int` | 循环轮数 (0=无限) |
 
----
+**后向兼容**：`fromJson` 检测无 `rounds` 键时从旧 `studyMinutes`/`breakMinutes` 退化为单组。
+**Getter 后向兼容**：`studyMinutes` → `rounds[0].workMinutes`，`breakMinutes` → `rounds[0].breakMinutes`。
 
-## 3. 架构
+**两个内置方案**：
+- 学习：`[2min工作, 1min休息]`，循环 4 轮
+- 训练：`[1min工作, 1min休息]`，循环 8 轮
 
-```
-┌─────────────────────────────────────┐
-│              UI Layer                │
-│  ┌──────────────┐  ┌──────────────┐  │
-│  │ TimerPage    │  │ StatsPage    │  │
-│  │ 主页面       │  │ 统计页面     │  │
-│  └──────┬───────┘  └──────┬───────┘  │
-├─────────┼──────────────────┼──────────┤
-│         ▼                  ▼          │
-│  ┌──────────────┐  ┌──────────────┐  │
-│  │ TimerService │  │ StatsService │  │
-│  │ 计时核心     │  │ 统计查询     │  │
-│  └──────┬───────┘  └──────┬───────┘  │
-├─────────┼──────────────────┼──────────┤
-│         ▼                  ▼          │
-│  ┌──────────────┐  ┌──────────────┐  │
-│  │ Notification │  │   Storage    │  │
-│  │ 本地通知管理  │  │  JSON 持久化 │  │
-│  └──────────────┘  └──────────────┘  │
-└─────────────────────────────────────┘
-```
+### `Phase` 枚举
+`idle` → `learning` → `breaking` → `finished`
 
-### 3.1 各层职责
+### `SessionState`
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `startTime` | `DateTime` | 会话开始时间 |
+| `rounds` | `List<RoundConfig>` | 组序列快照 |
+| `roundIndex` | `int` | 当前在第几组 (0-based) |
+| `multiCycle` | `bool` | 是否多轮循环 |
+| `totalCycles` | `int` | 总循环数 (0=无限) |
+| `currentCycle` | `int` | 当前第几轮 (1-based) |
+| `currentPhase` | `Phase` | 当前阶段 |
+| `phaseStartTime` | `DateTime` | 当前阶段开始时间 |
+| `isPaused` | `bool` | 暂停标记 |
+| `elapsedBeforePause` | `Duration` | 已耗用时间 |
 
-**TimerService**
-- 管理计时状态（当前阶段、倒计时、循环进度）
-- 暴露 ValueNotifier 供 UI 监听
-- 计时核心方法：start()、pause()、resume()、reset()
+**Getter 后向兼容**：`studyMinutes` → `rounds[roundIndex].workMinutes`，`breakMinutes` → `rounds[roundIndex].breakMinutes`
 
-**TimerService** 通过记录会话开始时间 + 持久化 SessionState 实现后台恢复。App 被杀后重新打开时，读取保存的状态并重新计算当前阶段位置。
+## 计时引擎 (TimerService)
 
-**Notification**
-- 封装 flutter_local_notifications
-- 会话开始时一次性调度整个周期的所有通知点
-- 提供取消通知（用户手动结束会话时）
+基于 `ChangeNotifier`，1 秒 `Timer.periodic` 驱动。
 
-**Storage**
-- MVP 阶段使用 JSON 文件存储
-- 保存 SessionState（当前活跃会话）和 DailyRecord（每日统计）
-
----
-
-## 4. 数据模型
-
-```dart
-enum Phase { learning, breaking, finished }
-
-class SessionState {
-  final DateTime startTime;
-  final int studyMinutes;
-  final int breakMinutes;
-  final int totalCycles;     // 0 表示无限循环
-  final int currentCycle;
-  final Phase currentPhase;
-  final DateTime phaseStartTime;
-  final bool isPaused;
-  final Duration pausedRemaining; // 暂停时已过去的时间
-}
-
-class StudyPreset {
-  final String id;
-  final String name;
-  final int studyMinutes;
-  final int breakMinutes;
-  final int totalCycles;     // 0 表示无限
-}
-
-class DailyRecord {
-  final DateTime date;
-  final int totalStudySeconds;
-  final int completedCycles;
-  final List<SessionRecord> sessions;
-}
-
-class SessionRecord {
-  final DateTime startTime;
-  final DateTime endTime;
-  final int completedCycles;
-  final int totalStudySeconds;
-}
-```
-
----
-
-## 5. 核心逻辑：计时恢复机制
-
-App 不依赖后台进程持续运行，而是通过「记录 + 计算」实现准确恢复：
-
-1. 会话开始时，完整保存 `SessionState` 到本地 JSON
-2. App 被杀或切后台：已调度的系统通知不受影响，到点照常弹出
-3. App 重新打开时：读取 `SessionState`，用 `DateTime.now() - session.startTime` 计算当前应该处于哪个阶段，直接跳到正确状态
-4. 用 `Timer.periodic(Duration(seconds: 1))` 实时更新前台倒计时显示
-
-### 通知调度策略
-
-会话开始时一次性计算所有通知时间点并调度：
-- 每轮的学习结束通知
-- 每轮的休息结束通知
-- 全部会话完成通知（非无限循环模式）
-- 通知带自定义声音，点击后跳转到 App 计时页面
-
----
-
-## 6. 界面设计
-
-### 6.1 计时器页（唯一页面，第一阶段）
+### 状态机：`_advancePhase()`
 
 ```
-┌──────────────────────────────┐
-│       学习计时器              │
-│                              │
-│          25:00               │  大号数字（剩余时间）
-│                              │
-│      学习中 · 第 1/4 轮      │  当前阶段和进度
-│                              │
-│  ████████░░░░░░░░░░░░  45%   │  进度条
-│                              │
-│     [  开始 / 暂停  ]       │  控制按钮
-│                              │
-│  ┌────────────────────────┐  │
-│  │ 📋 预设: 上班前         │  │  预设选择卡片
-│  │    学25分 · 休5分 · 4轮 │  │
-│  └────────────────────────┘  │
-│                              │
-│  📊 今日学习: 1h 15m         │  今日统计卡片
-│  完成 3 轮                   │
-└──────────────────────────────┘
+learning ──→ breaking ──→ learning (下一组 或 下一轮) ──→ ... ──→ finished
 ```
 
-- 学习中蓝色调，休息中切换为绿色调
-- 时间到→全屏半透明遮罩+大号文字+振动+「知道了」按钮
+**learning → breaking**：
+1. 若还有后续学习阶段（不是最后一组，或多循环且还有下轮）→ 进入 `Phase.breaking`，剩余时间取当前组休息时长
+2. 否则 → 进入 `Phase.finished`
 
-### 6.2 预设管理页（第二阶段）
+**breaking → learning**：
+1. `roundIndex + 1`：
+   - 若超出组数且 `multiCycle == true` → `roundIndex = 0`，`currentCycle + 1`；若循环数耗尽 → `finished`
+   - 若超出组数且 `multiCycle == false` → `finished`
+   - 若未超出 → 进入下一组 `Phase.learning`
 
-弹窗式管理，支持新建/编辑/删除预设。预设持久化到本地 JSON。
+### 公开 API
 
-### 6.3 统计页（第三阶段）
-
-新增第二 tab，包含今日概览、近 7 天柱状图、月视图日历、历史会话列表。
-
----
-
-## 7. 分阶段交付计划
-
-### 第一阶段（MVP）
-
-| 功能 | 说明 |
+| 方法 | 行为 |
 |------|------|
-| 计时器 | 1 个内置默认预设（学45休10，4轮） |
-| 手动开始/暂停 | 点击按钮控制 |
-| 系统通知 + 声音 | 所有阶段转换点触发 |
-| 前台全屏提醒 | 时间到→大号文字遮罩 |
-| 今日统计卡片 | 底部显示累计学习时长和完成轮数 |
-| 后台恢复 | App 被杀后恢复计时状态 |
+| `start(TimerProfile)` | 创建 `SessionState(rounds, roundIndex=0, cycle=1, learning)`，启动 tick，存 storage |
+| `pause()` | 设 `isPaused=true`，保存当前剩余时间 |
+| `resume()` | 清 `isPaused`，启动 tick |
+| `stop()` | 取消 timer，清 `state`/`remaining`，删 storage |
+| `restoreFromStorage()` | 从 JSON 恢复会话；若阶段已过期则静默推进（抑制 `onPhaseChanged`） |
 
-### 第二阶段
+### 属性
 
-| 功能 | 说明 |
+`state`、`remaining`、`progress`（0.0–1.0）、`isRunning`、`isFinished`、`onPhaseChanged`（回调）
+
+### 恢复逻辑
+
+1. 无已存会话 → 静默返回
+2. 暂停中 → `remaining = elapsedBeforePause`，不长 tick
+3. 已完成 → `remaining = 0`，不长 tick
+4. 进行中 → 计算 wall-time elapsed，若剩余 ≤ 0 则静默推进阶段，否则恢复倒计时
+
+## 持久化 (StorageService)
+
+写入 `getApplicationDocumentsDirectory()`，抛出或文件缺失时返回 null/默认值。
+
+| 文件 | 内容 |
 |------|------|
-| 预设管理 | 新建/编辑/删除预设方案 |
-| 预设选择 | 计时页点击预设卡片切换 |
-| 多个预设存储 | 持久化到 JSON |
+| `current_session.json` | `SessionState` |
+| `today_record.json` | `DailyRecord` |
+| `timer_profiles.json` | `List<TimerProfile>` (无文件时 fallback 为内置方案) |
 
-### 第三阶段
+方法：`loadSession`/`saveSession`/`clearSession`、`loadTodayRecord`/`saveTodayRecord`/`clearTodayRecord`、`loadProfiles`/`saveProfiles`
 
-| 功能 | 说明 |
-|------|------|
-| 统计页面 | 第二 tab，完整统计 |
-| 周趋势图表 | fl_chart 柱状图 |
-| 月视图日历 | 带学习标记 |
-| 历史记录 | 每次会话详情列表 |
+## 本地通知 (NotificationService)
 
----
+使用 `flutter_local_notifications` + `timezone`，`zonedSchedule`（精确+省电模式）。
 
-## 8. 错误处理
+### 通知调度：`schedulePhaseNotifications(session, {typeName})`
 
-| 场景 | 处理方式 |
-|------|----------|
-| 通知权限被拒绝 | 首次启动时请求权限，拒绝后显示引导提示 |
-| 存储文件损坏 | catch 异常，重置为默认状态，不崩溃 |
-| 恢复时发现过去时间超出会话总时长 | 标记会话为已完成，显示完成状态 |
-| 暂停后恢复 | 从暂停时刻继续倒计时，不丢失已过去时间 |
+从当前阶段开始遍历所有未来的 learning/break 阶段（最多 100 轮），计算绝对时间偏移：
 
----
+| 阶段 | 标题 | 正文 |
+|------|------|------|
+| learning → breaking | `${typeName}结束` | `第 ${cycle} 轮${typeName}完成！休息 ${breakMinutes} 分钟` |
+| breaking → learning | `休息结束` | `休息时间到！开始第 ${cycle+1} 轮${typeName}` |
 
-## 9. 测试策略
+注意：
+- 通知仍使用「轮」术语
+- 调度前调用 `cancelAll()` 去重
+- 异常静默 `debugPrint`
 
-- **单元测试：** TimerService 核心逻辑（开始/暂停/恢复/循环推进）、SessionState 恢复计算
-- **Widget 测试：** 计时器页面主要状态渲染（学习中/休息中/已完成）
-- **集成测试：** 通知调度 + App 杀后台恢复流程（通过模拟时间推进）
+## 页面
 
----
+### 主页面 (TimerPage)
 
-## 10. 边界情况
+布局（垂直 Column）：
+1. **顶部 profile 选择器**：`ListView` + `ChoiceChip`，内置不可删，自定义额外显示关闭图标（仅非选中时），所有 chip 在会话激活时禁用。末尾有添加 chip。
+2. **倒计时显示** (`TimerDisplay`)
+3. **控制按钮** (`ControlButtons`)
+4. **方案卡片** (`PresetCard`) — 闲置时可点击跳转编辑
+5. **今日统计** (`StatsCard`)
+6. **阶段切换遮罩** (`PhaseOverlay`)
 
-- 学习时长或休息时长为 0 → 跳过对应阶段
-- 总轮数为 0 → 无限循环，直到手动停止
-- 手机重启 → 从 JSON 恢复 SessionState，重新计算当前阶段
-- 跨天运行 → 以开始时间为基准计算，不受日期变更影响
+**阶段切换弹窗 (`_onPhaseChanged`)**：
+
+| 转换 | 标题 | 正文 | 模态 | 额外行为 |
+|------|------|------|------|----------|
+| learning → breaking | `学习结束！` | `休息 X 分钟` | 否 | 累加统计并写入今日记录 |
+| breaking → learning | `休息结束！` | `开始第 X 轮学习` | 是 | 自动暂停，用户手动点"知道了"后继续 |
+| → finished | `全部完成！` | `今天的学习任务已完成` | 否 | 累加统计并写入今日记录 |
+
+**今日统计**：实时累加已完成的秒数/轮数，精确到当前进行中的 learning 阶段 (`_displayStudySeconds`)。
+
+**自定义类型添加流程**：`AlertDialog` 输入名称 → 创建 `TimerProfile(category: custom)` → 追加列表并选中 → 保存 profiles。
+
+**编辑流程**：`Navigator.push(PresetEditPage)` → 回传修改后的 `TimerProfile` → 替换 `_profiles` 并保存。
+
+**停止流程**：确认对话框 → 若当前是 learning 阶段则记录部分时长 → 取消通知 → `timerService.stop()`。
+
+### 方案编辑页 (PresetEditPage)
+
+**布局**：
+1. 自定义名称 `TextField`（仅 `TimerCategory.custom`）
+2. 组列表 `_RoundCard`：
+   - 头部：**第 N 组**
+   - 学习/训练时长 `_DurationRow`（± stepper，最小 1）
+   - 休息时长 `_DurationRow`
+   - 删除按钮「删除本组」（仅多于 1 组时显示）
+3. **添加下一组** `OutlinedButton`
+4. **多轮循环** `CheckboxListTile`
+5. 循环轮数 `TextField`（仅多轮循环启用时，1–999）
+6. 保存 → `Navigator.pop(profile)`
+
+显示名根据类型自动匹配：学习→"学习"、训练→"训练"、自定义→`customName`。
+
+## 组件
+
+### TimerDisplay
+- 闲置 → "准备开始"（灰色），`00:00`，**第 1/4 轮**
+- 学习中 → "学习中"（蓝色），倒计时，`MM:SS`/`HH:MM:SS`，进度条
+- 休息中 → "休息中"（绿色），倒计时，进度条
+- 已完成 → "已完成"（灰色），`00:00`
+
+### ControlButtons
+- `isFinished` → "重新开始"
+- `isPaused` → "结束" + "继续"
+- 运行中 → "结束" + "暂停"
+- 闲置 → "开始"
+
+### PresetCard
+- 单组描述：`学习2分钟，休息1分钟，循环4轮` / `学习2分钟，休息1分钟`（不循环时）
+- 多组描述（不循环）：`第1组:学习2分→休息1分 | 第2组:学习3分→休息2分`
+- 多组描述（循环）：`第1组:学习2分→休息1分 | 第2组:学习3分→休息2分，循环4轮`
+
+### StatsCard
+`今日学习: 0h 0m` + `完成 0 轮`
+
+### PhaseOverlay
+全屏遮罩，`PopScope` 阻止返回（模态时），图标（📖/☕），大号标题，正文，可选剩余倒计时，「知道了」按钮。颜色与阶段匹配（蓝/绿）。
+
+## 数据流
+
+```
+┌─────────────┐     start(TimerProfile)     ┌──────────────┐
+│  TimerPage   │ ──────────────────────────► │ TimerService │
+│  (Stateful)  │ ◄── notifyListeners() ───── │ (ChangeNot.) │
+└──────┬──────┘                              └──────┬───────┘
+       │                                            │
+       │ loadProfiles()                     saveSession()
+       ▼                                            ▼
+┌─────────────┐                            ┌──────────────┐
+│ StorageSvc  │                            │ current_     │
+│             │◄──── saveProfiles() ──────  │ session.json │
+└─────────────┘                            └──────────────┘
+       ▲
+       │ loadTodayRecord()
+       │
+   today_record.json
+```
+
+挂起时 `SessionState` 序列化到 `current_session.json`；最大离线恢复间隔 1 秒（tick 精度）。
+
+## 测试
+
+25 测试用例，分 4 套：
+
+| 套件 | 文件 | 数量 |
+|------|------|------|
+| 应用冒烟 | `test/widget_test.dart` | 3 |
+| TimerDisplay 渲染 | `test/widgets/timer_display_test.dart` | 3 |
+| TimerService 状态机 | `test/services/timer_service_test.dart` | 16 |
+| StorageService IO | `test/services/storage_service_test.dart` | 6 |
+
+TimerService 测试覆盖：start/pause/resume/stop/progress/restore（无会话/活动中/已完成/暂停中/过期阶段推进）、isFinished。
