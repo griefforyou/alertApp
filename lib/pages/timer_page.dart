@@ -31,8 +31,8 @@ class _TimerPageState extends State<TimerPage> {
   final _defaultPreset = const StudyPreset(
     id: 'default',
     name: '默认方案',
-    studyMinutes: 45,
-    breakMinutes: 10,
+    studyMinutes: 2,
+    breakMinutes: 1,
     totalCycles: 4,
   );
 

@@ -217,8 +217,8 @@ void main() {
     });
   });
 
-  group('onPhaseChanged', () {
-    test('fires when phase advances via restore', () async {
+  group('restore phase advance', () {
+    test('advances phase during restore but does not fire callback', () async {
       final now = DateTime.now();
       await storageService.saveSession(SessionState(
         startTime: now.subtract(const Duration(minutes: 50)),
@@ -236,30 +236,8 @@ void main() {
       await timerService.restoreFromStorage();
 
       expect(timerService.state!.currentPhase, Phase.breaking);
-      expect(callbackCount, 1);
-    });
-  });
-
-  group('phase transitions', () {
-    test('advances to break phase when learning elapsed', () async {
-      final now = DateTime.now();
-      await storageService.saveSession(SessionState(
-        startTime: now.subtract(const Duration(minutes: 50)),
-        studyMinutes: 45,
-        breakMinutes: 10,
-        totalCycles: 4,
-        currentCycle: 1,
-        currentPhase: Phase.learning,
-        phaseStartTime: now.subtract(const Duration(minutes: 50)),
-      ));
-
-      int phaseChanges = 0;
-      timerService.onPhaseChanged = () { phaseChanges++; };
-      await timerService.restoreFromStorage();
-
-      expect(timerService.state!.currentPhase, Phase.breaking);
       expect(timerService.remaining!.inMinutes, 10);
-      expect(phaseChanges, 1);
+      expect(callbackCount, 0);
     });
   });
 }

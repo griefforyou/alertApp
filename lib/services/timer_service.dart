@@ -151,7 +151,10 @@ class TimerService extends ChangeNotifier {
 
     if (remaining.inSeconds <= 0) {
       _remaining = Duration.zero;
+      final cb = onPhaseChanged;
+      onPhaseChanged = null;
       _advancePhase();
+      onPhaseChanged = cb;
     } else {
       _remaining = remaining;
     }
