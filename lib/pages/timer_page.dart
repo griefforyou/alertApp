@@ -128,6 +128,24 @@ class _TimerPageState extends State<TimerPage> {
   }
 
   Future<void> _handleStop() async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('确认结束'),
+        content: const Text('当前学习进度将丢失，确定要结束吗？'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('取消'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('结束'),
+          ),
+        ],
+      ),
+    );
+    if (confirm != true) return;
     _notificationService.cancelAll();
     await _timerService.stop();
     setState(() {});

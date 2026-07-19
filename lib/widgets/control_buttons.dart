@@ -7,7 +7,7 @@ class ControlButtons extends StatelessWidget {
   final VoidCallback onStart;
   final VoidCallback onPause;
   final VoidCallback onResume;
-  final VoidCallback onStop;
+  final Future<void> Function() onStop;
 
   const ControlButtons({
     super.key,
@@ -38,7 +38,7 @@ class ControlButtons extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           OutlinedButton.icon(
-            onPressed: onStop,
+            onPressed: () => onStop(),
             icon: const Icon(Icons.stop),
             label: const Text('结束'),
             style: OutlinedButton.styleFrom(
@@ -75,9 +75,9 @@ class ControlButtons extends StatelessWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        OutlinedButton.icon(
-          onPressed: onStop,
-          icon: const Icon(Icons.stop),
+          OutlinedButton.icon(
+            onPressed: () => onStop(),
+            icon: const Icon(Icons.stop),
           label: const Text('结束'),
           style: OutlinedButton.styleFrom(
             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
