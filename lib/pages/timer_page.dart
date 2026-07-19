@@ -25,6 +25,7 @@ class _TimerPageState extends State<TimerPage> {
   bool _showOverlay = false;
   String _overlayTitle = '';
   String _overlayBody = '';
+  bool _overlayModal = false;
   int _totalStudySeconds = 0;
   int _completedCycles = 0;
 
@@ -85,6 +86,7 @@ class _TimerPageState extends State<TimerPage> {
       if (s.currentPhase == Phase.breaking) {
         _overlayTitle = '学习结束！';
         _overlayBody = '休息 ${s.breakMinutes} 分钟';
+        _overlayModal = false;
         _totalStudySeconds += s.studyMinutes * 60;
         if (s.totalCycles == 0 || s.currentCycle <= s.totalCycles) {
           _completedCycles++;
@@ -93,9 +95,12 @@ class _TimerPageState extends State<TimerPage> {
       } else if (s.currentPhase == Phase.learning) {
         _overlayTitle = '休息结束！';
         _overlayBody = '开始第 ${s.currentCycle} 轮学习';
+        _overlayModal = true;
+        _timerService.pause();
       } else if (s.currentPhase == Phase.finished) {
         _overlayTitle = '全部完成！';
         _overlayBody = '今天的学习任务已完成';
+        _overlayModal = false;
         _saveTodayRecord();
       }
       _showOverlay = true;
@@ -204,7 +209,12 @@ class _TimerPageState extends State<TimerPage> {
             title: _overlayTitle,
             body: _overlayBody,
             phase: state.currentPhase,
+            remaining: state.currentPhase == Phase.breaking ? remaining : null,
+            modal: _overlayModal,
             onDismiss: () {
+              if (_overlayModal) {
+                _timerService.resume();
+              }
               setState(() => _showOverlay = false);
             },
           ),
