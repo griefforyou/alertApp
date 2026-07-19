@@ -91,6 +91,11 @@ class _StudyTimerAppState extends State<StudyTimerApp> {
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
+          backgroundColor: brightness == Brightness.light
+              ? const Color(0xFF2196F3)
+              : const Color(0xFF64B5F6),
+          foregroundColor: Colors.white,
+          elevation: 0,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
           ),
@@ -100,6 +105,7 @@ class _StudyTimerAppState extends State<StudyTimerApp> {
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
+          backgroundColor: Colors.transparent,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
           ),
