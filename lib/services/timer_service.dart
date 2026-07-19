@@ -119,6 +119,7 @@ class TimerService extends ChangeNotifier {
   void resume() {
     if (_state == null || !_state!.isPaused) return;
     _state = _state!.copyWith(isPaused: false);
+    _startTick();
     _storage.saveSession(_state!);
     notifyListeners();
   }

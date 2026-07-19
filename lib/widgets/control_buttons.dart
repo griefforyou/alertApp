@@ -33,6 +33,33 @@ class ControlButtons extends StatelessWidget {
       );
     }
 
+    if (isPaused) {
+      return Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          OutlinedButton.icon(
+            onPressed: onStop,
+            icon: const Icon(Icons.stop),
+            label: const Text('结束'),
+            style: OutlinedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+              foregroundColor: Colors.red,
+            ),
+          ),
+          const SizedBox(width: 16),
+          ElevatedButton.icon(
+            onPressed: onResume,
+            icon: const Icon(Icons.play_arrow),
+            label: const Text('继续'),
+            style: ElevatedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+              textStyle: const TextStyle(fontSize: 16),
+            ),
+          ),
+        ],
+      );
+    }
+
     if (!isRunning) {
       return ElevatedButton.icon(
         onPressed: onStart,
