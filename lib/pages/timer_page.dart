@@ -41,8 +41,13 @@ class _TimerPageState extends State<TimerPage> {
     _timerService = TimerService(_storageService);
 
     _timerService.onPhaseChanged = _onPhaseChanged;
+    _timerService.addListener(_onTimerUpdate);
 
     _initAsync();
+  }
+
+  void _onTimerUpdate() {
+    if (mounted) setState(() {});
   }
 
   Future<void> _initAsync() async {
