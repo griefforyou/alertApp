@@ -61,6 +61,17 @@ class _TimerPageState extends State<TimerPage> {
     if (mounted) setState(() {});
   }
 
+  int get _displayStudySeconds {
+    final s = _timerService.state;
+    final r = _timerService.remaining;
+    if (s == null || r == null || s.currentPhase != Phase.learning) {
+      return _totalStudySeconds;
+    }
+    final elapsed = s.studyMinutes * 60 - r.inSeconds;
+    if (elapsed < 0) return _totalStudySeconds;
+    return _totalStudySeconds + elapsed;
+  }
+
   Future<void> _loadTodayRecord() async {
     final record = await _storageService.loadTodayRecord();
     if (record != null) {
@@ -146,6 +157,17 @@ class _TimerPageState extends State<TimerPage> {
       ),
     );
     if (confirm != true) return;
+    final s = _timerService.state;
+    if (s != null) {
+      final r = _timerService.remaining;
+      if (s.currentPhase == Phase.learning && r != null) {
+        final elapsed = s.studyMinutes * 60 - r.inSeconds;
+        if (elapsed > 0) _totalStudySeconds += elapsed;
+      } else if (s.currentPhase == Phase.breaking || s.currentPhase == Phase.finished) {
+        _totalStudySeconds += s.studyMinutes * 60;
+      }
+      _saveTodayRecord();
+    }
     _notificationService.cancelAll();
     await _timerService.stop();
     setState(() {});
@@ -217,7 +239,7 @@ class _TimerPageState extends State<TimerPage> {
                   PresetCard(preset: _defaultPreset),
                   const SizedBox(height: 12),
                   StatsCard(
-                    totalStudySeconds: _totalStudySeconds,
+                    totalStudySeconds: _displayStudySeconds,
                     completedCycles: _completedCycles,
                   ),
                   const Spacer(flex: 1),
