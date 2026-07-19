@@ -425,12 +425,15 @@ class _TimerPageState extends State<TimerPage> {
       child: Stack(
         clipBehavior: Clip.none,
         children: [
-          ChoiceChip(
-            label: Text(p.displayName),
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 140),
+            child: ChoiceChip(
+            label: Text(p.displayName, overflow: TextOverflow.ellipsis),
             selected: selected,
             onSelected: _editMode
                 ? (isCustom ? (_) => _handleRenameProfile(index) : null)
                 : (_timerService.state != null ? null : (_) => _switchProfile(index)),
+          ),
           ),
           if (_editMode && isCustom)
             Positioned(

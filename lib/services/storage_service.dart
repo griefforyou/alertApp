@@ -1,7 +1,6 @@
 import 'dart:convert';
-import 'dart:io';
 import 'package:flutter/foundation.dart';
-import 'package:path_provider/path_provider.dart';
+import 'storage_io.dart';
 import '../models/session_state.dart';
 import '../models/daily_record.dart';
 import '../models/timer_profile.dart';
@@ -12,15 +11,13 @@ class StorageService {
   static const _profilesFile = 'timer_profiles.json';
   static const _themeModeFile = 'theme_mode.json';
 
-  Future<Directory> get _storageDir => getApplicationDocumentsDirectory();
+  final StorageIO _io = StorageIO();
 
   Future<SessionState?> loadSession() async {
     try {
-      final dir = await _storageDir;
-      final file = File('${dir.path}/$_sessionFile');
-      if (!await file.exists()) return null;
-      final json = jsonDecode(await file.readAsString()) as Map<String, dynamic>;
-      return SessionState.fromJson(json);
+      final json = await _io.readString(_sessionFile);
+      if (json == null) return null;
+      return SessionState.fromJson(jsonDecode(json) as Map<String, dynamic>);
     } catch (e) {
       debugPrint('Failed to load session: $e');
       return null;
@@ -29,29 +26,21 @@ class StorageService {
 
   Future<void> saveSession(SessionState session) async {
     try {
-      final dir = await _storageDir;
-      final file = File('${dir.path}/$_sessionFile');
-      await file.writeAsString(jsonEncode(session.toJson()));
+      await _io.writeString(_sessionFile, jsonEncode(session.toJson()));
     } catch (e) {
       debugPrint('Failed to save session: $e');
     }
   }
 
   Future<void> clearSession() async {
-    final dir = await _storageDir;
-    final file = File('${dir.path}/$_sessionFile');
-    if (await file.exists()) {
-      await file.delete();
-    }
+    await _io.delete(_sessionFile);
   }
 
   Future<DailyRecord?> loadTodayRecord() async {
     try {
-      final dir = await _storageDir;
-      final file = File('${dir.path}/$_todayRecordFile');
-      if (!await file.exists()) return null;
-      final json = jsonDecode(await file.readAsString()) as Map<String, dynamic>;
-      return DailyRecord.fromJson(json);
+      final json = await _io.readString(_todayRecordFile);
+      if (json == null) return null;
+      return DailyRecord.fromJson(jsonDecode(json) as Map<String, dynamic>);
     } catch (e) {
       debugPrint('Failed to load today record: $e');
       return null;
@@ -60,28 +49,21 @@ class StorageService {
 
   Future<void> saveTodayRecord(DailyRecord record) async {
     try {
-      final dir = await _storageDir;
-      final file = File('${dir.path}/$_todayRecordFile');
-      await file.writeAsString(jsonEncode(record.toJson()));
+      await _io.writeString(_todayRecordFile, jsonEncode(record.toJson()));
     } catch (e) {
       debugPrint('Failed to save today record: $e');
     }
   }
 
   Future<void> clearTodayRecord() async {
-    final dir = await _storageDir;
-    final file = File('${dir.path}/$_todayRecordFile');
-    if (await file.exists()) {
-      await file.delete();
-    }
+    await _io.delete(_todayRecordFile);
   }
 
   Future<List<TimerProfile>> loadProfiles() async {
     try {
-      final dir = await _storageDir;
-      final file = File('${dir.path}/$_profilesFile');
-      if (!await file.exists()) return TimerProfile.defaults();
-      final list = jsonDecode(await file.readAsString()) as List<dynamic>;
+      final json = await _io.readString(_profilesFile);
+      if (json == null) return TimerProfile.defaults();
+      final list = jsonDecode(json) as List<dynamic>;
       return list.map((e) => TimerProfile.fromJson(e as Map<String, dynamic>)).toList();
     } catch (e) {
       debugPrint('Failed to load profiles: $e');
@@ -91,9 +73,7 @@ class StorageService {
 
   Future<void> saveProfiles(List<TimerProfile> profiles) async {
     try {
-      final dir = await _storageDir;
-      final file = File('${dir.path}/$_profilesFile');
-      await file.writeAsString(jsonEncode(profiles.map((p) => p.toJson()).toList()));
+      await _io.writeString(_profilesFile, jsonEncode(profiles.map((p) => p.toJson()).toList()));
     } catch (e) {
       debugPrint('Failed to save profiles: $e');
     }
@@ -101,11 +81,9 @@ class StorageService {
 
   Future<String> loadThemeMode() async {
     try {
-      final dir = await _storageDir;
-      final file = File('${dir.path}/$_themeModeFile');
-      if (!await file.exists()) return 'system';
-      final json = jsonDecode(await file.readAsString()) as Map<String, dynamic>;
-      return json['mode'] as String? ?? 'system';
+      final json = await _io.readString(_themeModeFile);
+      if (json == null) return 'system';
+      return (jsonDecode(json) as Map<String, dynamic>)['mode'] as String? ?? 'system';
     } catch (e) {
       debugPrint('Failed to load theme mode: $e');
       return 'system';
@@ -114,9 +92,7 @@ class StorageService {
 
   Future<void> saveThemeMode(String mode) async {
     try {
-      final dir = await _storageDir;
-      final file = File('${dir.path}/$_themeModeFile');
-      await file.writeAsString(jsonEncode({'mode': mode}));
+      await _io.writeString(_themeModeFile, jsonEncode({'mode': mode}));
     } catch (e) {
       debugPrint('Failed to save theme mode: $e');
     }
