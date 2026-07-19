@@ -27,8 +27,10 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
   FlutterWindow window(project);
   int screenWidth = GetSystemMetrics(SM_CXSCREEN);
   int screenHeight = GetSystemMetrics(SM_CYSCREEN);
-  int windowWidth = 720;
   int windowHeight = 1280;
+  int screenHeightPx = GetSystemMetrics(SM_CYSCREEN);
+  if (screenHeightPx - 80 < windowHeight) windowHeight = screenHeightPx - 80;
+  int windowWidth = windowHeight * 9 / 16;
   Win32Window::Point origin(
       (screenWidth - windowWidth) / 2,
       (screenHeight - windowHeight) / 2);
