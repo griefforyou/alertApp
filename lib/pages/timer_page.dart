@@ -101,6 +101,8 @@ class _TimerPageState extends State<TimerPage> {
         _overlayTitle = '全部完成！';
         _overlayBody = '今天的学习任务已完成';
         _overlayModal = false;
+        _totalStudySeconds += s.studyMinutes * 60;
+        _completedCycles++;
         _saveTodayRecord();
       }
       _showOverlay = true;

@@ -73,11 +73,20 @@ class TimerService extends ChangeNotifier {
     if (_state == null) return;
 
     if (_state!.currentPhase == Phase.learning) {
-      _state = _state!.copyWith(
-        currentPhase: Phase.breaking,
-        phaseStartTime: DateTime.now(),
-      );
-      _remaining = Duration(minutes: _state!.breakMinutes);
+      final isLastCycle =
+          _state!.totalCycles > 0 && _state!.currentCycle >= _state!.totalCycles;
+      if (isLastCycle) {
+        _state = _state!.copyWith(currentPhase: Phase.finished);
+        _tickTimer?.cancel();
+        _tickTimer = null;
+        _storage.clearSession();
+      } else {
+        _state = _state!.copyWith(
+          currentPhase: Phase.breaking,
+          phaseStartTime: DateTime.now(),
+        );
+        _remaining = Duration(minutes: _state!.breakMinutes);
+      }
     } else if (_state!.currentPhase == Phase.breaking) {
       final nextCycle = _state!.currentCycle + 1;
       if (_state!.totalCycles > 0 && nextCycle > _state!.totalCycles) {
