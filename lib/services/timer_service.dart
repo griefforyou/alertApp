@@ -3,6 +3,7 @@ import "package:flutter/foundation.dart";
 import "../models/session_state.dart";
 import "../models/timer_profile.dart";
 import "storage_service.dart";
+import "foreground_service.dart";
 
 class TimerService extends ChangeNotifier {
   final StorageService _storage;
@@ -49,6 +50,7 @@ class TimerService extends ChangeNotifier {
     _remaining = Duration(minutes: profile.rounds[0].workMinutes);
     await _storage.saveSession(_state!);
     _startTick();
+    ForegroundService.instance.start();
     notifyListeners();
   }
 
@@ -61,9 +63,14 @@ class TimerService extends ChangeNotifier {
 
   void _tick() {
     if (_state == null || _state!.isPaused) return;
-    final r = _remaining;
-    if (r == null) return;
-    _remaining = r - const Duration(seconds: 1);
+    final elapsed = DateTime.now().difference(_state!.phaseStartTime);
+    final phaseDuration = Duration(
+      minutes: _state!.currentPhase == Phase.learning
+          ? _state!.studyMinutes
+          : _state!.breakMinutes,
+    );
+    final remaining = phaseDuration - elapsed;
+    _remaining = remaining < Duration.zero ? Duration.zero : remaining;
     if (_remaining!.inSeconds <= 0) {
       _advancePhase();
     }
@@ -132,6 +139,8 @@ class TimerService extends ChangeNotifier {
     onPhaseChanged?.call();
     if (_state != null && _state!.currentPhase != Phase.finished) {
       _storage.saveSession(_state!);
+    } else {
+      ForegroundService.instance.stop();
     }
     notifyListeners();
   }
@@ -145,7 +154,17 @@ class TimerService extends ChangeNotifier {
 
   void resume() {
     if (_state == null || !_state!.isPaused) return;
-    _state = _state!.copyWith(isPaused: false);
+    _remaining = _state!.elapsedBeforePause;
+    final phaseDuration = Duration(
+      minutes: _state!.currentPhase == Phase.learning
+          ? _state!.studyMinutes
+          : _state!.breakMinutes,
+    );
+    final elapsed = phaseDuration - _remaining!;
+    _state = _state!.copyWith(
+      isPaused: false,
+      phaseStartTime: DateTime.now().subtract(elapsed),
+    );
     _startTick();
     _storage.saveSession(_state!);
     notifyListeners();
@@ -154,6 +173,7 @@ class TimerService extends ChangeNotifier {
   Future<void> stop() async {
     _tickTimer?.cancel();
     _tickTimer = null;
+    ForegroundService.instance.stop();
     _state = null;
     _remaining = null;
     await _storage.clearSession();
@@ -197,6 +217,7 @@ class TimerService extends ChangeNotifier {
     }
 
     _startTick();
+    ForegroundService.instance.start();
     notifyListeners();
   }
 
