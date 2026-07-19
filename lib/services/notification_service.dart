@@ -33,6 +33,7 @@ class NotificationService {
   }
 
   Future<void> schedulePhaseNotifications(SessionState session) async {
+    if (!_initialized) return;
     await cancelAll();
 
     int totalSeconds = 0;
@@ -100,6 +101,7 @@ class NotificationService {
   }
 
   Future<void> cancelAll() async {
+    if (!_initialized) return;
     await _plugin.cancelAll();
   }
 }
