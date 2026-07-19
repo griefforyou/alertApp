@@ -25,14 +25,8 @@ void main() {
     timerService = TimerService(storageService);
   });
 
-  tearDown(() async {
+  tearDown(() {
     timerService.dispose();
-    // Clean up any leftover session file
-    final dir = MockPathProvider._tempDir.absolute;
-    final file = File('${dir.path}/current_session.json');
-    if (await file.exists()) {
-      await file.delete();
-    }
   });
 
   group('start', () {
@@ -114,6 +108,158 @@ void main() {
     test('restores nothing when no saved session', () async {
       await timerService.restoreFromStorage();
       expect(timerService.state, isNull);
+    });
+
+    test('restores active learning session', () async {
+      final now = DateTime.now();
+      await storageService.saveSession(SessionState(
+        startTime: now.subtract(const Duration(minutes: 10)),
+        studyMinutes: 45,
+        breakMinutes: 10,
+        totalCycles: 4,
+        currentCycle: 1,
+        currentPhase: Phase.learning,
+        phaseStartTime: now.subtract(const Duration(minutes: 10)),
+      ));
+
+      final service = TimerService(storageService);
+      await service.restoreFromStorage();
+
+      expect(service.state, isNotNull);
+      expect(service.state!.currentPhase, Phase.learning);
+      expect(service.remaining!.inMinutes, greaterThanOrEqualTo(34)); // ~35, allow drift
+      expect(service.isRunning, true);
+      service.dispose();
+    });
+
+    test('restores finished session', () async {
+      await storageService.saveSession(SessionState(
+        startTime: DateTime.now().subtract(const Duration(hours: 2)),
+        studyMinutes: 45,
+        breakMinutes: 10,
+        totalCycles: 4,
+        currentCycle: 4,
+        currentPhase: Phase.finished,
+        phaseStartTime: DateTime.now(),
+      ));
+
+      final service = TimerService(storageService);
+      await service.restoreFromStorage();
+
+      expect(service.isFinished, true);
+      expect(service.remaining!.inSeconds, 0);
+      service.dispose();
+    });
+
+    test('restores paused session', () async {
+      final now = DateTime.now();
+      final pausedRemaining = const Duration(minutes: 30);
+      await storageService.saveSession(SessionState(
+        startTime: now.subtract(const Duration(minutes: 15)),
+        studyMinutes: 45,
+        breakMinutes: 10,
+        totalCycles: 4,
+        currentCycle: 1,
+        currentPhase: Phase.learning,
+        phaseStartTime: now.subtract(const Duration(minutes: 15)),
+        isPaused: true,
+        elapsedBeforePause: pausedRemaining,
+      ));
+
+      final service = TimerService(storageService);
+      await service.restoreFromStorage();
+
+      expect(service.state, isNotNull);
+      expect(service.state!.isPaused, true);
+      expect(service.remaining!.inMinutes, 30);
+      service.dispose();
+    });
+  });
+
+  group('isFinished', () {
+    test('returns false before start', () {
+      expect(timerService.isFinished, false);
+    });
+
+    test('returns false after start', () async {
+      await timerService.start(const StudyPreset(
+        id: 'test', name: 'Test', studyMinutes: 45, breakMinutes: 10, totalCycles: 4,
+      ));
+      expect(timerService.isFinished, false);
+    });
+
+    test('returns true after restore of finished session', () async {
+      await storageService.saveSession(SessionState(
+        startTime: DateTime.now(),
+        studyMinutes: 45, breakMinutes: 10, totalCycles: 4,
+        currentCycle: 4, currentPhase: Phase.finished,
+        phaseStartTime: DateTime.now(),
+      ));
+
+      final service = TimerService(storageService);
+      await service.restoreFromStorage();
+
+      expect(service.isFinished, true);
+      service.dispose();
+    });
+  });
+
+  group('progress', () {
+    test('returns 0.0 before start', () {
+      expect(timerService.progress, 0.0);
+    });
+
+    test('returns 0.0 immediately after start', () async {
+      await timerService.start(const StudyPreset(
+        id: 'test', name: 'Test', studyMinutes: 45, breakMinutes: 10, totalCycles: 4,
+      ));
+      expect(timerService.progress, closeTo(0.0, 0.01));
+    });
+  });
+
+  group('onPhaseChanged', () {
+    test('fires when phase advances via restore', () async {
+      final now = DateTime.now();
+      await storageService.saveSession(SessionState(
+        startTime: now.subtract(const Duration(minutes: 50)),
+        studyMinutes: 45,
+        breakMinutes: 10,
+        totalCycles: 4,
+        currentCycle: 1,
+        currentPhase: Phase.learning,
+        phaseStartTime: now.subtract(const Duration(minutes: 50)),
+      ));
+
+      int callbackCount = 0;
+      timerService.onPhaseChanged = () { callbackCount++; };
+
+      await timerService.restoreFromStorage();
+
+      expect(timerService.state!.currentPhase, Phase.breaking);
+      expect(callbackCount, 1);
+    });
+  });
+
+  group('phase transitions', () {
+    test('advances to break phase when learning elapsed', () async {
+      final now = DateTime.now();
+      await storageService.saveSession(SessionState(
+        startTime: now.subtract(const Duration(minutes: 50)),
+        studyMinutes: 45,
+        breakMinutes: 10,
+        totalCycles: 4,
+        currentCycle: 1,
+        currentPhase: Phase.learning,
+        phaseStartTime: now.subtract(const Duration(minutes: 50)),
+      ));
+
+      int phaseChanges = 0;
+      timerService.onPhaseChanged = () { phaseChanges++; };
+      await timerService.restoreFromStorage();
+
+      expect(timerService.state!.currentPhase, Phase.breaking);
+      expect(timerService.remaining!.inMinutes, 10);
+      expect(phaseChanges, 1);
     });
   });
 }
