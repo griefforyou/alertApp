@@ -19,13 +19,19 @@ class NotificationService {
       requestBadgePermission: true,
       requestSoundPermission: true,
     );
+    const windowsSettings = WindowsInitializationSettings(
+      appName: '学习计时器',
+      appUserModelId: 'StudyTimer.StudyTimer',
+      guid: 'd49b0314-ee7a-4626-bf79-97cdb8a991bb',
+    );
     const initSettings = InitializationSettings(
       android: androidSettings,
       iOS: iosSettings,
+      windows: windowsSettings,
     );
 
     try {
-      await _plugin.initialize(initSettings);
+      await _plugin.initialize(settings: initSettings);
       _initialized = true;
     } catch (e) {
       debugPrint('Failed to initialize notifications: $e');
@@ -90,14 +96,12 @@ class NotificationService {
       );
 
       await _plugin.zonedSchedule(
-        id,
-        title,
-        body,
-        scheduledDate,
-        details,
+        id: id,
+        title: title,
+        body: body,
+        scheduledDate: scheduledDate,
+        notificationDetails: details,
         androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-        uiLocalNotificationDateInterpretation:
-            UILocalNotificationDateInterpretation.absoluteTime,
       );
     } catch (e) {
       debugPrint('Failed to schedule notification: $e');
