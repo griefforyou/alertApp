@@ -5,6 +5,7 @@ import "../models/daily_record.dart";
 import "../models/timer_profile.dart";
 import "../services/timer_service.dart";
 import "../services/notification_service.dart";
+import "../services/sound_service.dart";
 import "../services/storage_service.dart";
 import "../widgets/timer_display.dart";
 import "../widgets/control_buttons.dart";
@@ -25,6 +26,7 @@ class TimerPage extends StatefulWidget {
 class _TimerPageState extends State<TimerPage> {
   late final TimerService _timerService;
   late final NotificationService _notificationService;
+  late final SoundService _soundService;
   late final StorageService _storageService;
   bool _showOverlay = false;
   String _overlayTitle = "";
@@ -48,6 +50,7 @@ class _TimerPageState extends State<TimerPage> {
     super.initState();
     _storageService = StorageService();
     _notificationService = NotificationService();
+    _soundService = SoundService();
     _timerService = TimerService(_storageService);
 
     _timerService.onPhaseChanged = _onPhaseChanged;
@@ -129,6 +132,7 @@ class _TimerPageState extends State<TimerPage> {
           title: "$_typeName结束",
           body: _overlayBody,
         );
+        _soundService.playBeep();
       } else if (s.currentPhase == Phase.learning) {
         _overlayTitle = "休息结束！";
         _overlayBody = "${_groupText(s)}开始第 ${s.currentCycle} 轮$_typeName";
@@ -138,6 +142,7 @@ class _TimerPageState extends State<TimerPage> {
           title: "休息结束",
           body: _overlayBody,
         );
+        _soundService.playBeep();
       } else if (s.currentPhase == Phase.finished) {
         _overlayTitle = "全部完成！";
         _overlayBody = "今天的$_typeName任务已完成";
@@ -452,6 +457,7 @@ class _TimerPageState extends State<TimerPage> {
   @override
   void dispose() {
     _timerService.dispose();
+    _soundService.dispose();
     _chipScrollController.dispose();
     super.dispose();
   }
