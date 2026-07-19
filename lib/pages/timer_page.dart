@@ -121,7 +121,7 @@ class _TimerPageState extends State<TimerPage> {
   }
 
   Future<void> _handleStop() async {
-    await _notificationService.cancelAll();
+    _notificationService.cancelAll();
     await _timerService.stop();
     setState(() {});
   }

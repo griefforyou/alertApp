@@ -73,35 +73,43 @@ class NotificationService {
     required String body,
     required int secondsFromNow,
   }) async {
-    final androidDetails = AndroidNotificationDetails(
-      'study_timer_channel',
-      '学习计时器',
-      channelDescription: '学习计时器提醒通知',
-      importance: Importance.high,
-      priority: Priority.high,
-    );
-    const iosDetails = DarwinNotificationDetails();
+    try {
+      final androidDetails = AndroidNotificationDetails(
+        'study_timer_channel',
+        '学习计时器',
+        channelDescription: '学习计时器提醒通知',
+        importance: Importance.high,
+        priority: Priority.high,
+      );
+      const iosDetails = DarwinNotificationDetails();
 
-    final details = NotificationDetails(android: androidDetails, iOS: iosDetails);
-    final scheduledDate = tz.TZDateTime.from(
-      DateTime.now().add(Duration(seconds: secondsFromNow)),
-      tz.local,
-    );
+      final details = NotificationDetails(android: androidDetails, iOS: iosDetails);
+      final scheduledDate = tz.TZDateTime.from(
+        DateTime.now().add(Duration(seconds: secondsFromNow)),
+        tz.local,
+      );
 
-    await _plugin.zonedSchedule(
-      id,
-      title,
-      body,
-      scheduledDate,
-      details,
-      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-      uiLocalNotificationDateInterpretation:
-          UILocalNotificationDateInterpretation.absoluteTime,
-    );
+      await _plugin.zonedSchedule(
+        id,
+        title,
+        body,
+        scheduledDate,
+        details,
+        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+        uiLocalNotificationDateInterpretation:
+            UILocalNotificationDateInterpretation.absoluteTime,
+      );
+    } catch (e) {
+      debugPrint('Failed to schedule notification: $e');
+    }
   }
 
   Future<void> cancelAll() async {
     if (!_initialized) return;
-    await _plugin.cancelAll();
+    try {
+      await _plugin.cancelAll();
+    } catch (e) {
+      debugPrint('Failed to cancel notifications: $e');
+    }
   }
 }
