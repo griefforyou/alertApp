@@ -1,4 +1,5 @@
 import "package:flutter/material.dart";
+import "package:flutter/gestures.dart";
 import "../models/session_state.dart";
 import "../models/daily_record.dart";
 import "../models/timer_profile.dart";
@@ -32,6 +33,8 @@ class _TimerPageState extends State<TimerPage> {
 
   List<TimerProfile> _profiles = [];
   int _selectedIndex = 0;
+  bool _editMode = false;
+  final _chipScrollController = ScrollController();
 
   TimerProfile get _profile => _selectedIndex < _profiles.length ? _profiles[_selectedIndex] : TimerProfile.defaults().first;
   String get _typeName => _profile.displayName;
@@ -120,11 +123,19 @@ class _TimerPageState extends State<TimerPage> {
         _overlayModal = false;
         _addStats(s.studyMinutes * 60, 1);
         _saveTodayRecord();
+        _notificationService.showNotification(
+          title: "$_typeName结束",
+          body: _overlayBody,
+        );
       } else if (s.currentPhase == Phase.learning) {
         _overlayTitle = "休息结束！";
         _overlayBody = "${_groupText(s)}开始第 ${s.currentCycle} 轮$_typeName";
         _overlayModal = true;
         _timerService.pause();
+        _notificationService.showNotification(
+          title: "休息结束",
+          body: _overlayBody,
+        );
       } else if (s.currentPhase == Phase.finished) {
         _overlayTitle = "全部完成！";
         _overlayBody = "今天的$_typeName任务已完成";
@@ -144,34 +155,48 @@ class _TimerPageState extends State<TimerPage> {
     setState(() => _selectedIndex = index);
   }
 
+  Set<String> get _existingNames =>
+      {for (final p in _profiles) p.displayName};
+
   Future<void> _handleAddProfile() async {
     final nameController = TextEditingController();
+    String? errorText;
     final name = await showDialog<String>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text("自定义类型"),
-        content: TextField(
-          controller: nameController,
-          autofocus: true,
-          decoration: const InputDecoration(
-            labelText: "名称",
-            hintText: "例如：跑步、阅读、瑜伽",
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text("取消"),
-          ),
-          TextButton(
-            onPressed: () {
-              final v = nameController.text.trim();
-              if (v.isEmpty) return;
-              Navigator.of(ctx).pop(v);
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          title: const Text("自定义类型"),
+          content: TextField(
+            controller: nameController,
+            autofocus: true,
+            decoration: InputDecoration(
+              labelText: "名称",
+              hintText: "例如：跑步、阅读、瑜伽",
+              errorText: errorText,
+            ),
+            onChanged: (_) {
+              setDialogState(() => errorText = null);
             },
-            child: const Text("添加"),
           ),
-        ],
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: const Text("取消"),
+            ),
+            TextButton(
+              onPressed: () {
+                final v = nameController.text.trim();
+                if (v.isEmpty) return;
+                if (_existingNames.contains(v)) {
+                  setDialogState(() => errorText = "该名称已存在");
+                  return;
+                }
+                Navigator.of(ctx).pop(v);
+              },
+              child: const Text("添加"),
+            ),
+          ],
+        ),
       ),
     );
     if (name == null || name.isEmpty) return;
@@ -217,14 +242,47 @@ class _TimerPageState extends State<TimerPage> {
     await _storageService.saveProfiles(_profiles);
   }
 
+  Future<void> _handleRenameProfile(int index) async {
+    final profile = _profiles[index];
+    if (profile.category != TimerCategory.custom) return;
+    final controller = TextEditingController(text: profile.customName);
+    final name = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text("修改名称"),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          decoration: const InputDecoration(
+            labelText: "名称",
+            hintText: "例如：跑步、阅读、瑜伽",
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text("取消"),
+          ),
+          TextButton(
+            onPressed: () {
+              final v = controller.text.trim();
+              if (v.isEmpty) return;
+              Navigator.of(ctx).pop(v);
+            },
+            child: const Text("确定"),
+          ),
+        ],
+      ),
+    );
+    if (name == null || name.isEmpty) return;
+    setState(() {
+      _profiles[index] = profile.copyWith(customName: name);
+    });
+    await _storageService.saveProfiles(_profiles);
+  }
+
   Future<void> _handleStart() async {
     await _timerService.start(_profile);
-    if (_timerService.state != null) {
-      await _notificationService.schedulePhaseNotifications(
-        _timerService.state!,
-        typeName: _typeName,
-      );
-    }
     setState(() {});
   }
 
@@ -291,9 +349,47 @@ class _TimerPageState extends State<TimerPage> {
     await _storageService.saveProfiles(_profiles);
   }
 
+  Widget _buildProfileChip(int index) {
+    final p = _profiles[index];
+    final selected = index == _selectedIndex;
+    final isCustom = p.category == TimerCategory.custom;
+    return Center(
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          ChoiceChip(
+            label: Text(p.displayName),
+            selected: selected,
+            onSelected: _editMode
+                ? (isCustom ? (_) => _handleRenameProfile(index) : null)
+                : (_timerService.state != null ? null : (_) => _switchProfile(index)),
+          ),
+          if (_editMode && isCustom)
+            Positioned(
+              top: -6,
+              right: -6,
+              child: GestureDetector(
+                onTap: () => _handleDeleteProfile(index),
+                child: Container(
+                  width: 20,
+                  height: 20,
+                  decoration: const BoxDecoration(
+                    color: Colors.red,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.close, size: 14, color: Colors.white),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
   @override
   void dispose() {
     _timerService.dispose();
+    _chipScrollController.dispose();
     super.dispose();
   }
 
@@ -326,41 +422,58 @@ class _TimerPageState extends State<TimerPage> {
                 children: [
                   SizedBox(
                     height: 48,
-                    child: ListView.separated(
-                      scrollDirection: Axis.horizontal,
-                      itemCount: _profiles.length + 1,
-                      separatorBuilder: (_, __) => const SizedBox(width: 8),
-                      itemBuilder: (context, index) {
-                        if (index == _profiles.length) {
-                          return Center(
-                            child: ActionChip(
-                              avatar: const Icon(Icons.add, size: 18),
-                              label: const Text("添加"),
-                              onPressed: _timerService.state != null ? null : _handleAddProfile,
-                            ),
-                          );
-                        }
-                        final p = _profiles[index];
-                        final selected = index == _selectedIndex;
-                        final canDelete = p.category == TimerCategory.custom && !selected;
-                        return ChoiceChip(
-                          label: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(p.displayName),
-                              if (canDelete) ...[
-                                const SizedBox(width: 4),
-                                GestureDetector(
-                                  onTap: () => _handleDeleteProfile(index),
-                                  child: const Icon(Icons.close, size: 14),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Listener(
+                            onPointerSignal: (event) {
+                              if (event is PointerScrollEvent) {
+                                _chipScrollController.jumpTo(
+                                  (_chipScrollController.offset + event.scrollDelta.dy).clamp(
+                                    _chipScrollController.position.minScrollExtent,
+                                    _chipScrollController.position.maxScrollExtent,
+                                  ),
+                                );
+                              }
+                            },
+                            child: GestureDetector(
+                              onHorizontalDragUpdate: (details) {
+                                _chipScrollController.jumpTo(
+                                  (_chipScrollController.offset - details.delta.dx).clamp(
+                                    0.0,
+                                    _chipScrollController.position.maxScrollExtent,
+                                  ),
+                                );
+                              },
+                              behavior: HitTestBehavior.translucent,
+                              child: SingleChildScrollView(
+                                controller: _chipScrollController,
+                                physics: const NeverScrollableScrollPhysics(),
+                                scrollDirection: Axis.horizontal,
+                                child: Row(
+                                  children: [
+                                    for (int i = 0; i < _profiles.length; i++) ...[
+                                      if (i > 0) const SizedBox(width: 8),
+                                      _buildProfileChip(i),
+                                    ],
+                                  ],
                                 ),
-                              ],
-                            ],
+                              ),
+                            ),
                           ),
-                          selected: selected,
-                          onSelected: _timerService.state != null ? null : (_) => _switchProfile(index),
-                        );
-                      },
+                        ),
+                        if (_profile.category == TimerCategory.custom)
+                          IconButton(
+                            icon: Icon(_editMode ? Icons.check : Icons.edit, size: 20),
+                            onPressed: _timerService.state != null ? null : () => setState(() => _editMode = !_editMode),
+                            tooltip: _editMode ? "完成" : "编辑",
+                          ),
+                        IconButton(
+                          icon: const Icon(Icons.add_circle_outline, size: 20),
+                          onPressed: _timerService.state != null ? null : _handleAddProfile,
+                          tooltip: "添加",
+                        ),
+                      ],
                     ),
                   ),
                   const Spacer(flex: 2),

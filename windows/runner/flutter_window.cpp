@@ -71,28 +71,8 @@ FlutterWindow::MessageHandler(HWND hwnd, UINT const message,
       mmi->ptMinTrackSize.y = 640;
       break;
     }
-    case WM_SIZING: {
-      RECT* rect = reinterpret_cast<RECT*>(lparam);
-      int width = rect->right - rect->left;
-      int height = rect->bottom - rect->top;
-      int newHeight = width * 16 / 9;
-      int newWidth = height * 9 / 16;
-      switch (wparam) {
-        case WMSZ_LEFT:
-        case WMSZ_RIGHT:
-        case WMSZ_BOTTOMLEFT:
-        case WMSZ_TOPLEFT:
-        case WMSZ_BOTTOMRIGHT:
-        case WMSZ_TOPRIGHT:
-          rect->bottom = rect->top + newHeight;
-          break;
-        case WMSZ_TOP:
-        case WMSZ_BOTTOM:
-          rect->right = rect->left + newWidth;
-          break;
-      }
+    case WM_SIZING:
       break;
-    }
   }
 
   return Win32Window::MessageHandler(hwnd, message, wparam, lparam);
