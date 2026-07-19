@@ -9,6 +9,7 @@ class TimerDisplay extends StatelessWidget {
   final double progress;
   final int studyMinutes;
   final int breakMinutes;
+  final String typeName;
 
   const TimerDisplay({
     super.key,
@@ -19,6 +20,7 @@ class TimerDisplay extends StatelessWidget {
     required this.progress,
     this.studyMinutes = 0,
     this.breakMinutes = 0,
+    this.typeName = '学习',
   });
 
   String get _timeText {
@@ -36,7 +38,7 @@ class TimerDisplay extends StatelessWidget {
       case Phase.idle:
         return '准备开始';
       case Phase.learning:
-        return '学习中';
+        return '$typeName中';
       case Phase.breaking:
         return '休息中';
       case Phase.finished:
@@ -46,8 +48,8 @@ class TimerDisplay extends StatelessWidget {
 
   String get _cycleText {
     if (phase == Phase.idle) {
-      if (totalCycles == 0) return '学$studyMinutes分 · 休$breakMinutes分 · 无限循环';
-      return '学$studyMinutes分 · 休$breakMinutes分 · $totalCycles轮';
+      if (totalCycles == 0) return '$typeName$studyMinutes分 · 休息$breakMinutes分 · 无限循环';
+      return '$typeName$studyMinutes分 · 休息$breakMinutes分 · $totalCycles轮';
     }
     if (phase == Phase.finished) return '所有轮次已完成';
     if (totalCycles == 0) return '第 $currentCycle 轮（无限循环）';

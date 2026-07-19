@@ -4,10 +4,12 @@ import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 import '../models/session_state.dart';
 import '../models/daily_record.dart';
+import '../models/timer_profile.dart';
 
 class StorageService {
   static const _sessionFile = 'current_session.json';
   static const _todayRecordFile = 'today_record.json';
+  static const _profilesFile = 'timer_profiles.json';
 
   Future<Directory> get _storageDir => getApplicationDocumentsDirectory();
 
@@ -70,6 +72,29 @@ class StorageService {
     final file = File('${dir.path}/$_todayRecordFile');
     if (await file.exists()) {
       await file.delete();
+    }
+  }
+
+  Future<List<TimerProfile>> loadProfiles() async {
+    try {
+      final dir = await _storageDir;
+      final file = File('${dir.path}/$_profilesFile');
+      if (!await file.exists()) return TimerProfile.defaults();
+      final list = jsonDecode(await file.readAsString()) as List<dynamic>;
+      return list.map((e) => TimerProfile.fromJson(e as Map<String, dynamic>)).toList();
+    } catch (e) {
+      debugPrint('Failed to load profiles: $e');
+      return TimerProfile.defaults();
+    }
+  }
+
+  Future<void> saveProfiles(List<TimerProfile> profiles) async {
+    try {
+      final dir = await _storageDir;
+      final file = File('${dir.path}/$_profilesFile');
+      await file.writeAsString(jsonEncode(profiles.map((p) => p.toJson()).toList()));
+    } catch (e) {
+      debugPrint('Failed to save profiles: $e');
     }
   }
 }

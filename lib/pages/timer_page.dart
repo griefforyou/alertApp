@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/session_state.dart';
 import '../models/study_preset.dart';
 import '../models/daily_record.dart';
+import '../models/timer_profile.dart';
 import '../services/timer_service.dart';
 import '../services/notification_service.dart';
 import '../services/storage_service.dart';
@@ -29,13 +30,11 @@ class _TimerPageState extends State<TimerPage> {
   int _totalStudySeconds = 0;
   int _completedCycles = 0;
 
-  final _defaultPreset = const StudyPreset(
-    id: 'default',
-    name: '默认方案',
-    studyMinutes: 2,
-    breakMinutes: 1,
-    totalCycles: 4,
-  );
+  List<TimerProfile> _profiles = [];
+  int _selectedIndex = 0;
+
+  TimerProfile get _profile => _selectedIndex < _profiles.length ? _profiles[_selectedIndex] : TimerProfile.defaults().first;
+  String get _typeName => _profile.displayName;
 
   @override
   void initState() {
@@ -56,6 +55,7 @@ class _TimerPageState extends State<TimerPage> {
 
   Future<void> _initAsync() async {
     await _notificationService.initialize();
+    _profiles = await _storageService.loadProfiles();
     await _timerService.restoreFromStorage();
     await _loadTodayRecord();
     if (mounted) setState(() {});
@@ -95,7 +95,7 @@ class _TimerPageState extends State<TimerPage> {
     if (s == null) return;
     setState(() {
       if (s.currentPhase == Phase.breaking) {
-        _overlayTitle = '学习结束！';
+        _overlayTitle = '$_typeName结束！';
         _overlayBody = '休息 ${s.breakMinutes} 分钟';
         _overlayModal = false;
         _totalStudySeconds += s.studyMinutes * 60;
@@ -105,12 +105,12 @@ class _TimerPageState extends State<TimerPage> {
         _saveTodayRecord();
       } else if (s.currentPhase == Phase.learning) {
         _overlayTitle = '休息结束！';
-        _overlayBody = '开始第 ${s.currentCycle} 轮学习';
+        _overlayBody = '开始第 ${s.currentCycle} 轮$_typeName';
         _overlayModal = true;
         _timerService.pause();
       } else if (s.currentPhase == Phase.finished) {
         _overlayTitle = '全部完成！';
-        _overlayBody = '今天的学习任务已完成';
+        _overlayBody = '今天的$_typeName任务已完成';
         _overlayModal = false;
         _totalStudySeconds += s.studyMinutes * 60;
         _completedCycles++;
@@ -120,10 +120,102 @@ class _TimerPageState extends State<TimerPage> {
     });
   }
 
-  Future<void> _handleStart() async {
-    await _timerService.start(_defaultPreset);
+  void _switchProfile(int index) {
+    if (index == _selectedIndex) return;
     if (_timerService.state != null) {
-      await _notificationService.schedulePhaseNotifications(_timerService.state!);
+      _timerService.stop();
+    }
+    setState(() => _selectedIndex = index);
+  }
+
+  Future<void> _handleAddProfile() async {
+    final nameController = TextEditingController();
+    final name = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('自定义类型'),
+        content: TextField(
+          controller: nameController,
+          autofocus: true,
+          decoration: const InputDecoration(
+            labelText: '名称',
+            hintText: '例如：跑步、阅读、瑜伽',
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('取消'),
+          ),
+          TextButton(
+            onPressed: () {
+              final v = nameController.text.trim();
+              if (v.isEmpty) return;
+              Navigator.of(ctx).pop(v);
+            },
+            child: const Text('添加'),
+          ),
+        ],
+      ),
+    );
+    if (name == null || name.isEmpty) return;
+    final profile = TimerProfile(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      category: TimerCategory.custom,
+      customName: name,
+      studyMinutes: 2,
+      breakMinutes: 1,
+      totalCycles: 4,
+    );
+    setState(() {
+      _profiles.add(profile);
+      _selectedIndex = _profiles.length - 1;
+    });
+    await _storageService.saveProfiles(_profiles);
+  }
+
+  Future<void> _handleDeleteProfile(int index) async {
+    final profile = _profiles[index];
+    if (profile.category != TimerCategory.custom) return;
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('删除类型'),
+        content: Text('确定要删除「${profile.displayName}」吗？'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('取消'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('删除'),
+          ),
+        ],
+      ),
+    );
+    if (confirm != true) return;
+    setState(() {
+      _profiles.removeAt(index);
+      if (_selectedIndex >= _profiles.length) _selectedIndex = _profiles.length - 1;
+    });
+    await _storageService.saveProfiles(_profiles);
+  }
+
+  Future<void> _handleStart() async {
+    final preset = StudyPreset(
+      id: _profile.id,
+      name: _profile.displayName,
+      studyMinutes: _profile.studyMinutes,
+      breakMinutes: _profile.breakMinutes,
+      totalCycles: _profile.totalCycles,
+    );
+    await _timerService.start(preset);
+    if (_timerService.state != null) {
+      await _notificationService.schedulePhaseNotifications(
+        _timerService.state!,
+        typeName: _typeName,
+      );
     }
     setState(() {});
   }
@@ -143,7 +235,7 @@ class _TimerPageState extends State<TimerPage> {
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('确认结束'),
-        content: const Text('当前学习进度将丢失，确定要结束吗？'),
+        content: Text('当前$_typeName进度将丢失，确定要结束吗？'),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
@@ -196,7 +288,7 @@ class _TimerPageState extends State<TimerPage> {
         Scaffold(
           backgroundColor: bgColor,
           appBar: AppBar(
-            title: const Text('学习计时器'),
+            title: const Text('计时器'),
             centerTitle: true,
             elevation: 0,
             backgroundColor: Colors.transparent,
@@ -206,6 +298,45 @@ class _TimerPageState extends State<TimerPage> {
               padding: const EdgeInsets.symmetric(horizontal: 24),
               child: Column(
                 children: [
+                  SizedBox(
+                    height: 48,
+                    child: ListView.separated(
+                      scrollDirection: Axis.horizontal,
+                      itemCount: _profiles.length + 1,
+                      separatorBuilder: (_, __) => const SizedBox(width: 8),
+                      itemBuilder: (context, index) {
+                        if (index == _profiles.length) {
+                          return Center(
+                            child: ActionChip(
+                              avatar: const Icon(Icons.add, size: 18),
+                              label: const Text('添加'),
+                              onPressed: _timerService.state != null ? null : _handleAddProfile,
+                            ),
+                          );
+                        }
+                        final p = _profiles[index];
+                        final selected = index == _selectedIndex;
+                        final canDelete = p.category == TimerCategory.custom && !selected;
+                        return ChoiceChip(
+                          label: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(p.displayName),
+                              if (canDelete) ...[
+                                const SizedBox(width: 4),
+                                GestureDetector(
+                                  onTap: () => _handleDeleteProfile(index),
+                                  child: const Icon(Icons.close, size: 14),
+                                ),
+                              ],
+                            ],
+                          ),
+                          selected: selected,
+                          onSelected: _timerService.state != null ? null : (_) => _switchProfile(index),
+                        );
+                      },
+                    ),
+                  ),
                   const Spacer(flex: 2),
                   if (remaining != null && state != null)
                     TimerDisplay(
@@ -214,16 +345,18 @@ class _TimerPageState extends State<TimerPage> {
                       currentCycle: state.currentCycle,
                       totalCycles: state.totalCycles,
                       progress: _timerService.progress,
+                      typeName: _typeName,
                     )
                   else
                     TimerDisplay(
                       remaining: Duration.zero,
                       phase: Phase.idle,
                       currentCycle: 0,
-                      totalCycles: _defaultPreset.totalCycles,
+                      totalCycles: _profile.totalCycles,
                       progress: 0,
-                      studyMinutes: _defaultPreset.studyMinutes,
-                      breakMinutes: _defaultPreset.breakMinutes,
+                      studyMinutes: _profile.studyMinutes,
+                      breakMinutes: _profile.breakMinutes,
+                      typeName: _typeName,
                     ),
                   const Spacer(flex: 2),
                   ControlButtons(
@@ -236,11 +369,21 @@ class _TimerPageState extends State<TimerPage> {
                     onStop: _handleStop,
                   ),
                   const Spacer(flex: 1),
-                  PresetCard(preset: _defaultPreset),
+                  PresetCard(
+                    preset: StudyPreset(
+                      id: _profile.id,
+                      name: _profile.displayName,
+                      studyMinutes: _profile.studyMinutes,
+                      breakMinutes: _profile.breakMinutes,
+                      totalCycles: _profile.totalCycles,
+                    ),
+                    typeName: _typeName,
+                  ),
                   const SizedBox(height: 12),
                   StatsCard(
                     totalStudySeconds: _displayStudySeconds,
                     completedCycles: _completedCycles,
+                    typeName: _typeName,
                   ),
                   const Spacer(flex: 1),
                 ],

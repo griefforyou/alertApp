@@ -38,7 +38,7 @@ class NotificationService {
     }
   }
 
-  Future<void> schedulePhaseNotifications(SessionState session) async {
+  Future<void> schedulePhaseNotifications(SessionState session, {String typeName = '学习'}) async {
     if (!_initialized) return;
     await cancelAll();
 
@@ -54,8 +54,8 @@ class NotificationService {
         totalSeconds += session.studyMinutes * 60;
         await _scheduleNotification(
           id: cycle * 2 - 1,
-          title: '学习结束',
-          body: '第 $cycle 轮学习完成！休息 ${session.breakMinutes} 分钟',
+          title: '$typeName结束',
+          body: '第 $cycle 轮$typeName完成！休息 ${session.breakMinutes} 分钟',
           secondsFromNow: totalSeconds,
         );
         phase = Phase.breaking;
@@ -64,7 +64,7 @@ class NotificationService {
         await _scheduleNotification(
           id: cycle * 2,
           title: '休息结束',
-          body: '休息时间到！开始第 ${cycle + 1} 轮学习',
+          body: '休息时间到！开始第 ${cycle + 1} 轮$typeName',
           secondsFromNow: totalSeconds,
         );
         phase = Phase.learning;

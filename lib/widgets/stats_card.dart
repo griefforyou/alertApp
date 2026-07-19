@@ -3,11 +3,13 @@ import 'package:flutter/material.dart';
 class StatsCard extends StatelessWidget {
   final int totalStudySeconds;
   final int completedCycles;
+  final String typeName;
 
   const StatsCard({
     super.key,
     this.totalStudySeconds = 0,
     this.completedCycles = 0,
+    this.typeName = '学习',
   });
 
   String get _formattedTime {
@@ -26,7 +28,7 @@ class StatsCard extends StatelessWidget {
           children: [
             const Icon(Icons.bar_chart, color: Color(0xFF2196F3)),
             const SizedBox(width: 12),
-            const Text('今日学习: ', style: TextStyle(fontSize: 16)),
+            Text('今日$typeName: ', style: TextStyle(fontSize: 16)),
             Text(
               _formattedTime,
               style: const TextStyle(

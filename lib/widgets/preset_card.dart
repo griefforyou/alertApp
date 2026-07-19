@@ -3,11 +3,12 @@ import '../models/study_preset.dart';
 
 class PresetCard extends StatelessWidget {
   final StudyPreset preset;
+  final String typeName;
   final VoidCallback? onTap;
-  const PresetCard({super.key, required this.preset, this.onTap});
+  const PresetCard({super.key, required this.preset, this.typeName = '学习', this.onTap});
 
   String get _description {
-    final study = '学习${preset.studyMinutes}分钟';
+    final study = '$typeName${preset.studyMinutes}分钟';
     final rest = '休息${preset.breakMinutes}分钟';
     final cycles = preset.totalCycles > 0 ? '循环${preset.totalCycles}轮' : '无限循环';
     return '$study，$rest，$cycles';
