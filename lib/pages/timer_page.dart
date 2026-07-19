@@ -176,10 +176,12 @@ class _TimerPageState extends State<TimerPage> {
                   else
                     TimerDisplay(
                       remaining: Duration.zero,
-                      phase: Phase.finished,
+                      phase: Phase.idle,
                       currentCycle: 0,
                       totalCycles: _defaultPreset.totalCycles,
                       progress: 0,
+                      studyMinutes: _defaultPreset.studyMinutes,
+                      breakMinutes: _defaultPreset.breakMinutes,
                     ),
                   const Spacer(flex: 2),
                   ControlButtons(

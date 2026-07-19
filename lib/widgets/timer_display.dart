@@ -7,6 +7,8 @@ class TimerDisplay extends StatelessWidget {
   final int currentCycle;
   final int totalCycles;
   final double progress;
+  final int studyMinutes;
+  final int breakMinutes;
 
   const TimerDisplay({
     super.key,
@@ -15,6 +17,8 @@ class TimerDisplay extends StatelessWidget {
     required this.currentCycle,
     required this.totalCycles,
     required this.progress,
+    this.studyMinutes = 0,
+    this.breakMinutes = 0,
   });
 
   String get _timeText {
@@ -29,6 +33,8 @@ class TimerDisplay extends StatelessWidget {
 
   String get _phaseText {
     switch (phase) {
+      case Phase.idle:
+        return '准备开始';
       case Phase.learning:
         return '学习中';
       case Phase.breaking:
@@ -39,6 +45,10 @@ class TimerDisplay extends StatelessWidget {
   }
 
   String get _cycleText {
+    if (phase == Phase.idle) {
+      if (totalCycles == 0) return '学$studyMinutes分 · 休$breakMinutes分 · 无限循环';
+      return '学$studyMinutes分 · 休$breakMinutes分 · $totalCycles轮';
+    }
     if (phase == Phase.finished) return '所有轮次已完成';
     if (totalCycles == 0) return '第 $currentCycle 轮（无限循环）';
     return '第 $currentCycle/$totalCycles 轮';
@@ -46,11 +56,13 @@ class TimerDisplay extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = phase == Phase.learning
-        ? const Color(0xFF2196F3)
-        : phase == Phase.breaking
-            ? const Color(0xFF4CAF50)
-            : const Color(0xFF9E9E9E);
+    final color = phase == Phase.idle
+        ? const Color(0xFF9E9E9E)
+        : phase == Phase.learning
+            ? const Color(0xFF2196F3)
+            : phase == Phase.breaking
+                ? const Color(0xFF4CAF50)
+                : const Color(0xFF9E9E9E);
 
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,

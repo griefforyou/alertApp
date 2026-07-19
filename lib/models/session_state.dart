@@ -1,4 +1,4 @@
-enum Phase { learning, breaking, finished }
+enum Phase { idle, learning, breaking, finished }
 
 class SessionState {
   final DateTime startTime;
