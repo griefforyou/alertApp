@@ -27,14 +27,16 @@ class _TimerPageState extends State<TimerPage> {
   String _overlayTitle = '';
   String _overlayBody = '';
   bool _overlayModal = false;
-  int _totalStudySeconds = 0;
-  int _completedCycles = 0;
+  Map<String, int> _statsSeconds = {};
+  Map<String, int> _statsCycles = {};
 
   List<TimerProfile> _profiles = [];
   int _selectedIndex = 0;
 
   TimerProfile get _profile => _selectedIndex < _profiles.length ? _profiles[_selectedIndex] : TimerProfile.defaults().first;
   String get _typeName => _profile.displayName;
+  int get _currentSeconds => _statsSeconds[_profile.id] ?? 0;
+  int get _currentCycles => _statsCycles[_profile.id] ?? 0;
 
   @override
   void initState() {
@@ -62,29 +64,42 @@ class _TimerPageState extends State<TimerPage> {
   }
 
   int get _displayStudySeconds {
+    final base = _currentSeconds;
     final s = _timerService.state;
     final r = _timerService.remaining;
     if (s == null || r == null || s.currentPhase != Phase.learning) {
-      return _totalStudySeconds;
+      return base;
     }
     final elapsed = s.studyMinutes * 60 - r.inSeconds;
-    if (elapsed < 0) return _totalStudySeconds;
-    return _totalStudySeconds + elapsed;
+    if (elapsed < 0) return base;
+    return base + elapsed;
   }
 
   Future<void> _loadTodayRecord() async {
     final record = await _storageService.loadTodayRecord();
     if (record != null) {
-      _totalStudySeconds = record.totalStudySeconds;
-      _completedCycles = record.completedCycles;
+      _statsSeconds = Map.from(record.perTypeStats.map((k, v) => MapEntry(k, v.totalStudySeconds)));
+      _statsCycles = Map.from(record.perTypeStats.map((k, v) => MapEntry(k, v.completedCycles)));
     }
   }
 
+  void _addStats(int seconds, int cycles) {
+    final id = _profile.id;
+    _statsSeconds[id] = (_statsSeconds[id] ?? 0) + seconds;
+    _statsCycles[id] = (_statsCycles[id] ?? 0) + cycles;
+  }
+
   Future<void> _saveTodayRecord() async {
+    final perType = <String, PerTypeStats>{};
+    for (final id in _statsSeconds.keys) {
+      perType[id] = PerTypeStats(
+        totalStudySeconds: _statsSeconds[id] ?? 0,
+        completedCycles: _statsCycles[id] ?? 0,
+      );
+    }
     final record = DailyRecord(
       date: DateTime.now(),
-      totalStudySeconds: _totalStudySeconds,
-      completedCycles: _completedCycles,
+      perTypeStats: perType,
     );
     await _storageService.saveTodayRecord(record);
   }
@@ -98,10 +113,7 @@ class _TimerPageState extends State<TimerPage> {
         _overlayTitle = '$_typeName结束！';
         _overlayBody = '休息 ${s.breakMinutes} 分钟';
         _overlayModal = false;
-        _totalStudySeconds += s.studyMinutes * 60;
-        if (s.totalCycles == 0 || s.currentCycle <= s.totalCycles) {
-          _completedCycles++;
-        }
+        _addStats(s.studyMinutes * 60, 1);
         _saveTodayRecord();
       } else if (s.currentPhase == Phase.learning) {
         _overlayTitle = '休息结束！';
@@ -112,8 +124,7 @@ class _TimerPageState extends State<TimerPage> {
         _overlayTitle = '全部完成！';
         _overlayBody = '今天的$_typeName任务已完成';
         _overlayModal = false;
-        _totalStudySeconds += s.studyMinutes * 60;
-        _completedCycles++;
+        _addStats(s.studyMinutes * 60, 1);
         _saveTodayRecord();
       }
       _showOverlay = true;
@@ -252,12 +263,14 @@ class _TimerPageState extends State<TimerPage> {
     final s = _timerService.state;
     if (s != null) {
       final r = _timerService.remaining;
+      int addSec = 0;
       if (s.currentPhase == Phase.learning && r != null) {
         final elapsed = s.studyMinutes * 60 - r.inSeconds;
-        if (elapsed > 0) _totalStudySeconds += elapsed;
+        if (elapsed > 0) addSec = elapsed;
       } else if (s.currentPhase == Phase.breaking || s.currentPhase == Phase.finished) {
-        _totalStudySeconds += s.studyMinutes * 60;
+        addSec = s.studyMinutes * 60;
       }
+      if (addSec > 0) _addStats(addSec, 0);
       _saveTodayRecord();
     }
     _notificationService.cancelAll();
@@ -382,7 +395,7 @@ class _TimerPageState extends State<TimerPage> {
                   const SizedBox(height: 12),
                   StatsCard(
                     totalStudySeconds: _displayStudySeconds,
-                    completedCycles: _completedCycles,
+                    completedCycles: _currentCycles,
                     typeName: _typeName,
                   ),
                   const Spacer(flex: 1),

@@ -40,46 +40,50 @@ class SessionRecord {
   );
 }
 
-class DailyRecord {
-  final DateTime date;
+class PerTypeStats {
   final int totalStudySeconds;
   final int completedCycles;
-  final List<SessionRecord> sessions;
+
+  const PerTypeStats({
+    this.totalStudySeconds = 0,
+    this.completedCycles = 0,
+  });
+
+  Map<String, dynamic> toJson() => {
+    'totalStudySeconds': totalStudySeconds,
+    'completedCycles': completedCycles,
+  };
+
+  factory PerTypeStats.fromJson(Map<String, dynamic> json) => PerTypeStats(
+    totalStudySeconds: json['totalStudySeconds'] as int,
+    completedCycles: json['completedCycles'] as int,
+  );
+}
+
+class DailyRecord {
+  final DateTime date;
+  final Map<String, PerTypeStats> perTypeStats;
 
   const DailyRecord({
     required this.date,
-    this.totalStudySeconds = 0,
-    this.completedCycles = 0,
-    this.sessions = const [],
+    this.perTypeStats = const {},
   });
 
-  DailyRecord copyWith({
-    DateTime? date,
-    int? totalStudySeconds,
-    int? completedCycles,
-    List<SessionRecord>? sessions,
-  }) {
-    return DailyRecord(
-      date: date ?? this.date,
-      totalStudySeconds: totalStudySeconds ?? this.totalStudySeconds,
-      completedCycles: completedCycles ?? this.completedCycles,
-      sessions: sessions ?? this.sessions,
-    );
-  }
+  int get totalStudySeconds =>
+      perTypeStats.values.fold(0, (sum, s) => sum + s.totalStudySeconds);
+
+  int get completedCycles =>
+      perTypeStats.values.fold(0, (sum, s) => sum + s.completedCycles);
 
   Map<String, dynamic> toJson() => {
     'date': date.toIso8601String().substring(0, 10),
-    'totalStudySeconds': totalStudySeconds,
-    'completedCycles': completedCycles,
-    'sessions': sessions.map((s) => s.toJson()).toList(),
+    'perTypeStats': perTypeStats.map((k, v) => MapEntry(k, v.toJson())),
   };
 
   factory DailyRecord.fromJson(Map<String, dynamic> json) => DailyRecord(
     date: DateTime.parse(json['date'] as String),
-    totalStudySeconds: json['totalStudySeconds'] as int,
-    completedCycles: json['completedCycles'] as int,
-    sessions: (json['sessions'] as List)
-        .map((s) => SessionRecord.fromJson(s as Map<String, dynamic>))
-        .toList(),
+    perTypeStats: (json['perTypeStats'] as Map<String, dynamic>).map(
+      (k, v) => MapEntry(k, PerTypeStats.fromJson(v as Map<String, dynamic>)),
+    ),
   );
 }

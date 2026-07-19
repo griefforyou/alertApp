@@ -84,16 +84,9 @@ void main() {
   test('save and load today record', () async {
     final record = DailyRecord(
       date: DateTime(2026, 7, 19),
-      totalStudySeconds: 2700,
-      completedCycles: 1,
-      sessions: [
-        SessionRecord(
-          startTime: DateTime(2026, 7, 19, 20, 0),
-          endTime: DateTime(2026, 7, 19, 20, 45),
-          completedCycles: 1,
-          totalStudySeconds: 2700,
-        ),
-      ],
+      perTypeStats: {
+        'study': const PerTypeStats(totalStudySeconds: 2700, completedCycles: 1),
+      },
     );
 
     await storage.saveTodayRecord(record);
