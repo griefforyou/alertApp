@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/session_state.dart';
 import '../models/study_preset.dart';
+import '../models/daily_record.dart';
 import '../services/timer_service.dart';
 import '../services/notification_service.dart';
 import '../services/storage_service.dart';
@@ -24,6 +25,8 @@ class _TimerPageState extends State<TimerPage> {
   bool _showOverlay = false;
   String _overlayTitle = '';
   String _overlayBody = '';
+  int _totalStudySeconds = 0;
+  int _completedCycles = 0;
 
   final _defaultPreset = const StudyPreset(
     id: 'default',
@@ -53,7 +56,25 @@ class _TimerPageState extends State<TimerPage> {
   Future<void> _initAsync() async {
     await _notificationService.initialize();
     await _timerService.restoreFromStorage();
+    await _loadTodayRecord();
     if (mounted) setState(() {});
+  }
+
+  Future<void> _loadTodayRecord() async {
+    final record = await _storageService.loadTodayRecord();
+    if (record != null) {
+      _totalStudySeconds = record.totalStudySeconds;
+      _completedCycles = record.completedCycles;
+    }
+  }
+
+  Future<void> _saveTodayRecord() async {
+    final record = DailyRecord(
+      date: DateTime.now(),
+      totalStudySeconds: _totalStudySeconds,
+      completedCycles: _completedCycles,
+    );
+    await _storageService.saveTodayRecord(record);
   }
 
   void _onPhaseChanged() {
@@ -64,12 +85,18 @@ class _TimerPageState extends State<TimerPage> {
       if (s.currentPhase == Phase.breaking) {
         _overlayTitle = '学习结束！';
         _overlayBody = '休息 ${s.breakMinutes} 分钟';
+        _totalStudySeconds += s.studyMinutes * 60;
+        if (s.totalCycles == 0 || s.currentCycle <= s.totalCycles) {
+          _completedCycles++;
+        }
+        _saveTodayRecord();
       } else if (s.currentPhase == Phase.learning) {
         _overlayTitle = '休息结束！';
         _overlayBody = '开始第 ${s.currentCycle} 轮学习';
       } else if (s.currentPhase == Phase.finished) {
         _overlayTitle = '全部完成！';
         _overlayBody = '今天的学习任务已完成';
+        _saveTodayRecord();
       }
       _showOverlay = true;
     });
@@ -162,7 +189,10 @@ class _TimerPageState extends State<TimerPage> {
                   const Spacer(flex: 1),
                   PresetCard(preset: _defaultPreset),
                   const SizedBox(height: 12),
-                  const StatsCard(),
+                  StatsCard(
+                    totalStudySeconds: _totalStudySeconds,
+                    completedCycles: _completedCycles,
+                  ),
                   const Spacer(flex: 1),
                 ],
               ),
