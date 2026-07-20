@@ -73,10 +73,10 @@ class _TimerPageState extends State<TimerPage> {
     _profiles = await _storageService.loadProfiles();
     await _timerService.restoreFromStorage();
     await _loadTodayRecord();
-    final savedUri = await _storageService.loadNotificationSoundUri();
-    _notificationSoundUri = savedUri;
-    _notificationService.setSoundUri(savedUri != 'default' ? savedUri : null);
-    _notificationSoundTitle = _soundTitleFromUri(savedUri);
+    final saved = await _storageService.loadNotificationSound();
+    _notificationSoundUri = saved['uri'] ?? 'default';
+    _notificationSoundTitle = saved['title'] ?? '默认系统铃声';
+    _notificationService.setSoundUri(_notificationSoundUri != 'default' ? _notificationSoundUri : null);
     if (mounted) setState(() {});
   }
 
@@ -477,7 +477,7 @@ class _TimerPageState extends State<TimerPage> {
                             style: Theme.of(ctx).textTheme.labelSmall?.copyWith(color: Theme.of(ctx).colorScheme.onSurfaceVariant),
                           ),
                         ),
-                        ...builtinSounds.map((s) => _buildSoundTile(s, ctx, setDialogState, pendingUri, previewingUri)),
+                        ...builtinSounds.map((s) => _buildSoundTile(s, ctx, setDialogState, () => pendingUri, (v) => pendingUri = v, (v) => pendingTitle = v, () => previewingUri, (v) => previewingUri = v)),
                       ],
                       if (systemSounds.isNotEmpty) ...[
                         Padding(
@@ -486,7 +486,7 @@ class _TimerPageState extends State<TimerPage> {
                             style: Theme.of(ctx).textTheme.labelSmall?.copyWith(color: Theme.of(ctx).colorScheme.onSurfaceVariant),
                           ),
                         ),
-                        ...systemSounds.map((s) => _buildSoundTile(s, ctx, setDialogState, pendingUri, previewingUri)),
+                        ...systemSounds.map((s) => _buildSoundTile(s, ctx, setDialogState, () => pendingUri, (v) => pendingUri = v, (v) => pendingTitle = v, () => previewingUri, (v) => previewingUri = v)),
                       ],
                     ],
                   ),
@@ -511,9 +511,9 @@ class _TimerPageState extends State<TimerPage> {
                           onPressed: () {
                             _soundPickerService.stopRingtone();
                             _notificationSoundUri = pendingUri;
-                            _notificationSoundTitle = pendingTitle;
+                            _notificationSoundTitle = _soundTitleFor(pendingUri, pendingTitle);
                             _notificationService.setSoundUri(pendingUri != 'default' ? pendingUri : null);
-                            _storageService.saveNotificationSoundUri(pendingUri);
+                            _storageService.saveNotificationSound(pendingUri, _notificationSoundTitle);
                             Navigator.pop(ctx);
                             setState(() {});
                           },
@@ -531,11 +531,11 @@ class _TimerPageState extends State<TimerPage> {
     );
   }
 
-  Widget _buildSoundTile(Map<String, String> s, BuildContext ctx, StateSetter setDialogState, String pendingUri, String? previewingUri) {
+  Widget _buildSoundTile(Map<String, String> s, BuildContext ctx, StateSetter setDialogState, String Function() getPending, void Function(String) setPending, void Function(String) setPendingTitle, String? Function() getPreview, void Function(String?) setPreview) {
     final uri = s['uri'] ?? '';
     final title = s['title'] ?? '';
     final isBuiltin = uri.startsWith('builtin:');
-    final isPreviewing = previewingUri == uri;
+    final isPreviewing = getPreview() == uri;
     return ListTile(
       leading: IconButton(
         icon: Icon(
@@ -545,23 +545,24 @@ class _TimerPageState extends State<TimerPage> {
         onPressed: () async {
           if (isPreviewing) {
             await _soundPickerService.stopRingtone();
-            setDialogState(() => previewingUri = null);
+            setDialogState(() => setPreview(null));
           } else if (isBuiltin) {
             await _soundPickerService.stopRingtone();
             await _soundService.playBuiltin(uri.substring(8));
-            setDialogState(() => previewingUri = uri);
+            setDialogState(() => setPreview(uri));
           } else {
             await _soundPickerService.stopRingtone();
             await _soundPickerService.playRingtone(uri);
-            setDialogState(() => previewingUri = uri);
+            setDialogState(() => setPreview(uri));
           }
         },
       ),
       title: Text(title),
-      trailing: pendingUri == uri ? Icon(Icons.check, color: Theme.of(ctx).colorScheme.primary) : null,
+      trailing: getPending() == uri ? Icon(Icons.check, color: Theme.of(ctx).colorScheme.primary) : null,
       onTap: () {
         setDialogState(() {
-          pendingUri = uri;
+          setPending(uri);
+          setPendingTitle(title);
         });
       },
     );
@@ -799,17 +800,11 @@ class _TimerPageState extends State<TimerPage> {
     );
   }
 
-  String _soundTitleFromUri(String uri) {
+  String _soundTitleFor(String uri, String title) {
     if (uri == 'default') return '默认系统铃声';
-    final b = _soundPickerService.builtinSounds;
-    for (final s in b) {
-      if (s['uri'] == uri) return '内置: ${s['title']}';
-    }
-    if (uri.startsWith('content://')) {
-      final segs = uri.split('/');
-      return '系统: ${segs.last}';
-    }
-    return '自定义';
+    if (uri.startsWith('builtin:')) return '内置: $title';
+    if (uri.startsWith('content://')) return '系统: $title';
+    return title;
   }
 }
 

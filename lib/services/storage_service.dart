@@ -101,20 +101,24 @@ class StorageService {
     }
   }
 
-  Future<String> loadNotificationSoundUri() async {
+  Future<Map<String, String>> loadNotificationSound() async {
     try {
       final json = await _io.readString(_notificationSoundFile);
-      if (json == null) return _defaultNotificationSoundUri;
-      return (jsonDecode(json) as Map<String, dynamic>)['uri'] as String? ?? _defaultNotificationSoundUri;
+      if (json == null) return {'uri': _defaultNotificationSoundUri, 'title': '默认系统铃声'};
+      final map = jsonDecode(json) as Map<String, dynamic>;
+      return {
+        'uri': map['uri'] as String? ?? _defaultNotificationSoundUri,
+        'title': map['title'] as String? ?? '默认系统铃声',
+      };
     } catch (e) {
       debugPrint('Failed to load notification sound: $e');
-      return _defaultNotificationSoundUri;
+      return {'uri': _defaultNotificationSoundUri, 'title': '默认系统铃声'};
     }
   }
 
-  Future<void> saveNotificationSoundUri(String uri) async {
+  Future<void> saveNotificationSound(String uri, String title) async {
     try {
-      await _io.writeString(_notificationSoundFile, jsonEncode({'uri': uri}));
+      await _io.writeString(_notificationSoundFile, jsonEncode({'uri': uri, 'title': title}));
     } catch (e) {
       debugPrint('Failed to save notification sound: $e');
     }
