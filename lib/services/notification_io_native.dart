@@ -1,13 +1,11 @@
 import 'dart:io';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 class NotificationIO {
-  static const _channel = MethodChannel('com.studytimer/sound_picker');
   final FlutterLocalNotificationsPlugin _plugin = FlutterLocalNotificationsPlugin();
   bool _initialized = false;
-  String? _previousSoundUri;
+  String? _lastChannelId;
 
   Future<void> initialize() async {
     if (_initialized) return;
@@ -41,7 +39,7 @@ class NotificationIO {
     if (!_initialized) return;
     try {
       final androidDetails = _buildAndroidDetails(soundUri);
-      const iosDetails = DarwinNotificationDetails();
+      final iosDetails = _buildIosDetails(soundUri);
       const windowsDetails = WindowsNotificationDetails();
       final details = NotificationDetails(android: androidDetails, iOS: iosDetails, windows: windowsDetails);
       final id = DateTime.now().millisecondsSinceEpoch & 0x7FFFFFFF;
@@ -51,31 +49,57 @@ class NotificationIO {
     }
   }
 
-  AndroidNotificationDetails _buildAndroidDetails(String? soundUri) {
-    final isCustom = soundUri != null && soundUri != 'default' && Platform.isAndroid;
+  String _channelIdFor(String? soundUri) {
+    if (soundUri == null || soundUri == 'default') return 'study_timer_default';
+    return 'study_timer_${soundUri.hashCode}';
+  }
 
-    if (isCustom && soundUri != _previousSoundUri) {
-      _deleteChannel('study_timer_channel');
-      _previousSoundUri = soundUri;
-    } else if (!isCustom && _previousSoundUri != null) {
-      _deleteChannel('study_timer_channel');
-      _previousSoundUri = null;
+  AndroidNotificationDetails _buildAndroidDetails(String? soundUri) {
+    final channelId = _channelIdFor(soundUri);
+
+    if (soundUri == null || soundUri == 'default') {
+      return AndroidNotificationDetails(
+        channelId, '\u5b66\u4e60\u8ba1\u65f6\u5668',
+        channelDescription: '\u5b66\u4e60\u8ba1\u65f6\u5668\u63d0\u9192\u901a\u77e5',
+        importance: Importance.high, priority: Priority.high,
+      );
+    }
+
+    if (soundUri.startsWith('content://')) {
+      return AndroidNotificationDetails(
+        channelId, '\u5b66\u4e60\u8ba1\u65f6\u5668',
+        channelDescription: '\u5b66\u4e60\u8ba1\u65f6\u5668\u63d0\u9192\u901a\u77e5',
+        importance: Importance.high, priority: Priority.high,
+        sound: UriAndroidNotificationSound(soundUri),
+      );
+    }
+
+    if (soundUri.startsWith('builtin:')) {
+      final name = soundUri.substring(8);
+      return AndroidNotificationDetails(
+        channelId, '\u5b66\u4e60\u8ba1\u65f6\u5668',
+        channelDescription: '\u5b66\u4e60\u8ba1\u65f6\u5668\u63d0\u9192\u901a\u77e5',
+        importance: Importance.high, priority: Priority.high,
+        sound: RawResourceAndroidNotificationSound(name),
+      );
     }
 
     return AndroidNotificationDetails(
-      'study_timer_channel',
-      '\u5b66\u4e60\u8ba1\u65f6\u5668',
+      channelId, '\u5b66\u4e60\u8ba1\u65f6\u5668',
       channelDescription: '\u5b66\u4e60\u8ba1\u65f6\u5668\u63d0\u9192\u901a\u77e5',
-      importance: Importance.high,
-      priority: Priority.high,
-      sound: isCustom ? UriAndroidNotificationSound(soundUri!) : null,
+      importance: Importance.high, priority: Priority.high,
     );
   }
 
-  Future<void> _deleteChannel(String channelId) async {
-    try {
-      await _channel.invokeMethod('deleteNotificationChannel', {'channelId': channelId});
-    } catch (_) {}
+  DarwinNotificationDetails _buildIosDetails(String? soundUri) {
+    if (soundUri == null || soundUri == 'default') {
+      return const DarwinNotificationDetails();
+    }
+    if (soundUri.startsWith('builtin:')) {
+      final name = '${soundUri.substring(8)}.wav';
+      return DarwinNotificationDetails(sound: name);
+    }
+    return const DarwinNotificationDetails();
   }
 
   void cancelAll() {

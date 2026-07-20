@@ -2,13 +2,17 @@ package com.studytimer.study_timer
 
 import android.app.NotificationManager
 import android.content.Context
+import android.media.Ringtone
 import android.media.RingtoneManager
+import android.net.Uri
 import android.provider.MediaStore
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 
 class MainActivity : FlutterActivity() {
+    private var currentRingtone: Ringtone? = null
+
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
 
@@ -25,9 +29,27 @@ class MainActivity : FlutterActivity() {
                     }
                     result.success(null)
                 }
+                "playRingtone" -> {
+                    val uri = call.argument<String>("uri") ?: ""
+                    currentRingtone?.stop()
+                    currentRingtone = RingtoneManager.getRingtone(this, Uri.parse(uri))
+                    currentRingtone?.play()
+                    result.success(null)
+                }
+                "stopRingtone" -> {
+                    currentRingtone?.stop()
+                    currentRingtone = null
+                    result.success(null)
+                }
                 else -> result.notImplemented()
             }
         }
+    }
+
+    override fun onDestroy() {
+        currentRingtone?.stop()
+        currentRingtone = null
+        super.onDestroy()
     }
 
     companion object {
