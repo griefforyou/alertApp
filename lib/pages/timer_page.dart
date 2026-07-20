@@ -6,6 +6,7 @@ import "../models/timer_profile.dart";
 import "../services/timer_service.dart";
 import "../services/notification_service.dart";
 import "../services/sound_service.dart";
+import "../services/sound_picker_service.dart";
 import "../services/storage_service.dart";
 import "../widgets/timer_display.dart";
 import "../widgets/control_buttons.dart";
@@ -28,6 +29,9 @@ class _TimerPageState extends State<TimerPage> {
   late final NotificationService _notificationService;
   late final SoundService _soundService;
   late final StorageService _storageService;
+  late final SoundPickerService _soundPickerService;
+  String _notificationSoundUri = 'default';
+  String _notificationSoundTitle = '默认系统铃声';
   bool _showOverlay = false;
   String _overlayTitle = "";
   String _overlayBody = "";
@@ -51,6 +55,7 @@ class _TimerPageState extends State<TimerPage> {
     _storageService = StorageService();
     _notificationService = NotificationService();
     _soundService = SoundService();
+    _soundPickerService = SoundPickerService();
     _timerService = TimerService(_storageService);
 
     _timerService.onPhaseChanged = _onPhaseChanged;
@@ -68,6 +73,9 @@ class _TimerPageState extends State<TimerPage> {
     _profiles = await _storageService.loadProfiles();
     await _timerService.restoreFromStorage();
     await _loadTodayRecord();
+    final savedUri = await _storageService.loadNotificationSoundUri();
+    _notificationSoundUri = savedUri;
+    _notificationService.setSoundUri(savedUri != 'default' ? savedUri : null);
     if (mounted) setState(() {});
   }
 
@@ -363,7 +371,7 @@ class _TimerPageState extends State<TimerPage> {
             children: [
               Padding(
                 padding: const EdgeInsets.only(bottom: 8),
-                child: Text("主题",
+                child: Text("设置",
                   style: Theme.of(ctx).textTheme.titleLarge,
                 ),
               ),
@@ -393,6 +401,90 @@ class _TimerPageState extends State<TimerPage> {
                   widget.onThemeModeChanged?.call(ThemeMode.system);
                   Navigator.pop(ctx);
                 },
+              ),
+              const Divider(),
+              _ThemeTile(
+                icon: Icons.notifications_outlined,
+                label: "通知铃声",
+                subtitle: _notificationSoundTitle,
+                selected: false,
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _showNotificationSoundPicker();
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _showNotificationSoundPicker() async {
+    final sounds = await _soundPickerService.getNotificationSounds();
+    if (!mounted) return;
+    final selectedUri = _notificationSoundUri;
+
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.only(left: 16, bottom: 8),
+                child: Text("选择通知铃声",
+                  style: Theme.of(ctx).textTheme.titleLarge,
+                ),
+              ),
+              if (sounds.isEmpty && selectedUri == 'default')
+                const Padding(
+                  padding: EdgeInsets.all(24),
+                  child: Center(child: Text("当前仅支持默认系统铃声\n可在系统通知设置中更换", textAlign: TextAlign.center)),
+                ),
+              SizedBox(
+                height: (sounds.length + 1) * 56.0 > 360 ? 360 : (sounds.length + 1) * 56.0,
+                child: ListView(
+                  shrinkWrap: true,
+                  children: [
+                    ListTile(
+                      leading: const Icon(Icons.volume_up_outlined),
+                      title: const Text("默认系统铃声"),
+                      trailing: selectedUri == 'default' ? Icon(Icons.check, color: Theme.of(ctx).colorScheme.primary) : null,
+                      onTap: () {
+                        _notificationSoundUri = 'default';
+                        _notificationSoundTitle = '默认系统铃声';
+                        _notificationService.setSoundUri(null);
+                        _storageService.saveNotificationSoundUri('default');
+                        Navigator.pop(ctx);
+                        setState(() {});
+                      },
+                    ),
+                    ...sounds.map((s) {
+                      final uri = s['uri'] ?? '';
+                      final title = s['title'] ?? 'Unknown';
+                      return ListTile(
+                        leading: const Icon(Icons.music_note_outlined),
+                        title: Text(title),
+                        trailing: selectedUri == uri ? Icon(Icons.check, color: Theme.of(ctx).colorScheme.primary) : null,
+                        onTap: () {
+                          _notificationSoundUri = uri;
+                          _notificationSoundTitle = title;
+                          _notificationService.setSoundUri(uri);
+                          _storageService.saveNotificationSoundUri(uri);
+                          Navigator.pop(ctx);
+                          setState(() {});
+                        },
+                      );
+                    }),
+                  ],
+                ),
               ),
             ],
           ),
@@ -637,12 +729,14 @@ class _TimerPageState extends State<TimerPage> {
 class _ThemeTile extends StatelessWidget {
   final IconData icon;
   final String label;
+  final String? subtitle;
   final bool selected;
   final VoidCallback onTap;
 
   const _ThemeTile({
     required this.icon,
     required this.label,
+    this.subtitle,
     required this.selected,
     required this.onTap,
   });
@@ -653,6 +747,7 @@ class _ThemeTile extends StatelessWidget {
     return ListTile(
       leading: Icon(icon, color: cs.primary),
       title: Text(label),
+      subtitle: subtitle != null ? Text(subtitle!, style: Theme.of(context).textTheme.bodySmall) : null,
       trailing: selected ? Icon(Icons.check, color: cs.primary) : null,
       onTap: onTap,
     );

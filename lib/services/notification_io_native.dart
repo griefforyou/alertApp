@@ -1,9 +1,11 @@
+import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 class NotificationIO {
   final FlutterLocalNotificationsPlugin _plugin = FlutterLocalNotificationsPlugin();
   bool _initialized = false;
+  String? _previousSoundUri;
 
   Future<void> initialize() async {
     if (_initialized) return;
@@ -33,24 +35,43 @@ class NotificationIO {
     }
   }
 
-  Future<void> show({required String title, required String body}) async {
+  Future<void> show({required String title, required String body, String? soundUri}) async {
     if (!_initialized) return;
     try {
-      const androidDetails = AndroidNotificationDetails(
-        'study_timer_channel',
-        '\u5b66\u4e60\u8ba1\u65f6\u5668',
-        channelDescription: '\u5b66\u4e60\u8ba1\u65f6\u5668\u63d0\u9192\u901a\u77e5',
-        importance: Importance.high,
-        priority: Priority.high,
-      );
+      final androidDetails = _buildAndroidDetails(soundUri);
       const iosDetails = DarwinNotificationDetails();
       const windowsDetails = WindowsNotificationDetails();
-      const details = NotificationDetails(android: androidDetails, iOS: iosDetails, windows: windowsDetails);
+      final details = NotificationDetails(android: androidDetails, iOS: iosDetails, windows: windowsDetails);
       final id = DateTime.now().millisecondsSinceEpoch & 0x7FFFFFFF;
       await _plugin.show(id: id, title: title, body: body, notificationDetails: details);
     } catch (e) {
       debugPrint('Failed to show notification: $e');
     }
+  }
+
+  AndroidNotificationDetails _buildAndroidDetails(String? soundUri) {
+    final isCustomSound = soundUri != null && soundUri != 'default' && Platform.isAndroid;
+    final channelId = isCustomSound ? 'study_timer_channel_custom' : 'study_timer_channel';
+
+    if (isCustomSound && soundUri != _previousSoundUri) {
+      _recreateChannel(channelId);
+      _previousSoundUri = soundUri;
+    }
+
+    return AndroidNotificationDetails(
+      channelId,
+      '\u5b66\u4e60\u8ba1\u65f6\u5668',
+      channelDescription: '\u5b66\u4e60\u8ba1\u65f6\u5668\u63d0\u9192\u901a\u77e5',
+      importance: Importance.high,
+      priority: Priority.high,
+      sound: isCustomSound ? UriAndroidNotificationSound(soundUri!) : null,
+    );
+  }
+
+  void _recreateChannel(String channelId) {
+    try {
+      _plugin.cancelAll();
+    } catch (_) {}
   }
 
   void cancelAll() {

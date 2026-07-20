@@ -5,11 +5,14 @@ import '../models/session_state.dart';
 import '../models/daily_record.dart';
 import '../models/timer_profile.dart';
 
+const _defaultNotificationSoundUri = 'default';
+
 class StorageService {
   static const _sessionFile = 'current_session.json';
   static const _todayRecordFile = 'today_record.json';
   static const _profilesFile = 'timer_profiles.json';
   static const _themeModeFile = 'theme_mode.json';
+  static const _notificationSoundFile = 'notification_sound.json';
 
   final StorageIO _io = StorageIO();
 
@@ -95,6 +98,25 @@ class StorageService {
       await _io.writeString(_themeModeFile, jsonEncode({'mode': mode}));
     } catch (e) {
       debugPrint('Failed to save theme mode: $e');
+    }
+  }
+
+  Future<String> loadNotificationSoundUri() async {
+    try {
+      final json = await _io.readString(_notificationSoundFile);
+      if (json == null) return _defaultNotificationSoundUri;
+      return (jsonDecode(json) as Map<String, dynamic>)['uri'] as String? ?? _defaultNotificationSoundUri;
+    } catch (e) {
+      debugPrint('Failed to load notification sound: $e');
+      return _defaultNotificationSoundUri;
+    }
+  }
+
+  Future<void> saveNotificationSoundUri(String uri) async {
+    try {
+      await _io.writeString(_notificationSoundFile, jsonEncode({'uri': uri}));
+    } catch (e) {
+      debugPrint('Failed to save notification sound: $e');
     }
   }
 }

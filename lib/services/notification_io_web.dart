@@ -9,7 +9,7 @@ class NotificationIO {
     _initialized = true;
   }
 
-  Future<void> show({required String title, required String body}) async {
+  Future<void> show({required String title, required String body, String? soundUri}) async {
     try {
       if (Notification.permission == 'granted') {
         Notification(title, body: body);

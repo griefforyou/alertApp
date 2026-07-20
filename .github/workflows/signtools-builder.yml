@@ -1,0 +1,23 @@
+name: SignTools Builder
+on:
+  workflow_dispatch:
+  repository_dispatch:
+    types: [signtools-build]
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install SignTools Builder
+        run: pip install signtools-builder
+      - name: Run Builder
+        env:
+          ST_SERVER_URL: "https://sign-tools-phi.vercel.app/"
+          ST_GITHUB_TOKEN: ${{ secrets.ST_GITHUB_TOKEN }}
+          ST_APPLE_ID: ${{ secrets.ST_APPLE_ID }}
+          ST_APPLE_PASS: ${{ secrets.ST_APPLE_PWD }}
+        run: signtools-builder
