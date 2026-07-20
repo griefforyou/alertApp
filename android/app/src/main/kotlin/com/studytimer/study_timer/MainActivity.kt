@@ -1,9 +1,9 @@
 package com.studytimer.study_timer
 
+import android.app.NotificationManager
 import android.content.Context
 import android.media.RingtoneManager
 import android.provider.MediaStore
-import android.net.Uri
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
@@ -16,6 +16,14 @@ class MainActivity : FlutterActivity() {
             when (call.method) {
                 "getNotificationSounds" -> {
                     result.success(getNotificationSounds(this))
+                }
+                "deleteNotificationChannel" -> {
+                    val channelId = call.argument<String>("channelId")
+                    if (channelId != null) {
+                        val nm = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+                        nm.deleteNotificationChannel(channelId)
+                    }
+                    result.success(null)
                 }
                 else -> result.notImplemented()
             }

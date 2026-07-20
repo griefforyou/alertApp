@@ -1,8 +1,10 @@
 import 'dart:io';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 class NotificationIO {
+  static const _channel = MethodChannel('com.studytimer/sound_picker');
   final FlutterLocalNotificationsPlugin _plugin = FlutterLocalNotificationsPlugin();
   bool _initialized = false;
   String? _previousSoundUri;
@@ -50,27 +52,29 @@ class NotificationIO {
   }
 
   AndroidNotificationDetails _buildAndroidDetails(String? soundUri) {
-    final isCustomSound = soundUri != null && soundUri != 'default' && Platform.isAndroid;
-    final channelId = isCustomSound ? 'study_timer_channel_custom' : 'study_timer_channel';
+    final isCustom = soundUri != null && soundUri != 'default' && Platform.isAndroid;
 
-    if (isCustomSound && soundUri != _previousSoundUri) {
-      _recreateChannel(channelId);
+    if (isCustom && soundUri != _previousSoundUri) {
+      _deleteChannel('study_timer_channel');
       _previousSoundUri = soundUri;
+    } else if (!isCustom && _previousSoundUri != null) {
+      _deleteChannel('study_timer_channel');
+      _previousSoundUri = null;
     }
 
     return AndroidNotificationDetails(
-      channelId,
+      'study_timer_channel',
       '\u5b66\u4e60\u8ba1\u65f6\u5668',
       channelDescription: '\u5b66\u4e60\u8ba1\u65f6\u5668\u63d0\u9192\u901a\u77e5',
       importance: Importance.high,
       priority: Priority.high,
-      sound: isCustomSound ? UriAndroidNotificationSound(soundUri!) : null,
+      sound: isCustom ? UriAndroidNotificationSound(soundUri!) : null,
     );
   }
 
-  void _recreateChannel(String channelId) {
+  Future<void> _deleteChannel(String channelId) async {
     try {
-      _plugin.cancelAll();
+      await _channel.invokeMethod('deleteNotificationChannel', {'channelId': channelId});
     } catch (_) {}
   }
 
