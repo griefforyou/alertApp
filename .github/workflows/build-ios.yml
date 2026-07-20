@@ -1,0 +1,61 @@
+name: Build iOS Unsigned IPA
+on:
+  # 触发条件：推送代码到main分支，按需改分支名
+  push:
+    branches: [ main ]
+  # 可选：手动触发构建
+  workflow_dispatch:
+
+jobs:
+  build_ios:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # Flutter 环境（这里只改version即可）
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.44.6'
+          cache: true
+
+      # 缓存pub依赖，加速构建
+      - name: Cache Flutter pub
+        uses: actions/cache@v3
+        with:
+          path: ~/.pub-cache
+          key: pub-${{ hashFiles('pubspec.lock') }}
+
+      - name: Install flutter dependencies
+        run: flutter pub get
+
+      # 缓存cocoapods，解决pod install慢/超时
+      - name: Cache CocoaPods
+        uses: actions/cache@v3
+        with:
+          path: ios/Pods
+          key: pods-${{ hashFiles('ios/Podfile.lock') }}
+
+      - name: Install Pods
+        working-directory: ios
+        run: pod install --repo-update
+
+      # 关键：无签名打包ios
+      - name: Build unsigned iOS
+        run: flutter build ios --release --no-codesign
+
+      # 组装Payload生成ipa
+      - name: Generate IPA
+        run: |
+          mkdir -p Payload
+          cp -r build/ios/iphoneos/Runner.app Payload/
+          zip -r app-release.ipa Payload
+          rm -rf Payload
+
+      # 上传ipa供下载
+      - name: Upload IPA Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Unsigned-iPA
+          path: app-release.ipa
