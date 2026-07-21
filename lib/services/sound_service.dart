@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math';
 import 'dart:typed_data';
 import 'package:audioplayers/audioplayers.dart';
@@ -6,6 +7,24 @@ import 'package:flutter/foundation.dart';
 class SoundService {
   final _player = AudioPlayer();
   final Map<String, Uint8List> _cache = {};
+  static bool _configured = false;
+
+  SoundService() {
+    _configure();
+  }
+
+  static void _configure() {
+    if (_configured) return;
+    _configured = true;
+    unawaited(AudioPlayer.global.setAudioContext(
+      AudioContext(
+        iOS: AudioContextIOS(
+          category: AVAudioSessionCategory.playback,
+          options: {AVAudioSessionOptions.duckOthers},
+        ),
+      ),
+    ));
+  }
 
   Future<void> playBuiltin(String name) async {
     try {

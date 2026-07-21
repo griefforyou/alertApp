@@ -44,6 +44,21 @@ class NotificationIO {
         }
       }
     }
+    if (defaultTargetPlatform == TargetPlatform.iOS) {
+      final iosPlugin = _plugin.resolvePlatformSpecificImplementation<
+          IOSFlutterLocalNotificationsPlugin>();
+      if (iosPlugin != null) {
+        try {
+          await iosPlugin.requestPermissions(
+            alert: true,
+            badge: true,
+            sound: true,
+          );
+        } catch (e) {
+          debugPrint('Failed to request notification permission: $e');
+        }
+      }
+    }
   }
 
   Future<void> show({required String title, required String body, String? soundUri}) async {
@@ -110,7 +125,10 @@ class NotificationIO {
     }
     if (soundUri.startsWith('builtin:')) {
       final name = '${soundUri.substring(8)}.wav';
-      return DarwinNotificationDetails(sound: name);
+      return DarwinNotificationDetails(
+        sound: name,
+        presentSound: false,
+      );
     }
     return const DarwinNotificationDetails();
   }
