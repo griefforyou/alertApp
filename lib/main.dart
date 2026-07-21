@@ -98,9 +98,7 @@ class _StudyTimerAppState extends State<StudyTimerApp> {
               : const Color(0xFF64B5F6),
           foregroundColor: Colors.white,
           elevation: 0,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
+          shape: const StadiumBorder(),
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
           textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
         ),
@@ -108,6 +106,13 @@ class _StudyTimerAppState extends State<StudyTimerApp> {
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
           backgroundColor: Colors.transparent,
+          shape: const StadiumBorder(),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+          textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+        ),
+      ),
+      filledButtonTheme: FilledButtonThemeData(
+        style: FilledButton.styleFrom(
           shape: const StadiumBorder(),
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
           textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
