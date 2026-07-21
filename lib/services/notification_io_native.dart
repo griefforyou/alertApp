@@ -125,10 +125,7 @@ class NotificationIO {
     }
     if (soundUri.startsWith('builtin:')) {
       final name = '${soundUri.substring(8)}.wav';
-      return DarwinNotificationDetails(
-        sound: name,
-        presentSound: false,
-      );
+      return DarwinNotificationDetails(sound: name);
     }
     return const DarwinNotificationDetails();
   }
