@@ -33,6 +33,18 @@ class NotificationIO {
     } catch (e) {
       debugPrint('Failed to initialize notifications: $e');
     }
+
+    if (defaultTargetPlatform == TargetPlatform.android) {
+      final androidPlugin = _plugin.resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin>();
+      if (androidPlugin != null) {
+        try {
+          await androidPlugin.requestNotificationsPermission();
+        } catch (e) {
+          debugPrint('Failed to request notification permission: $e');
+        }
+      }
+    }
   }
 
   Future<void> show({required String title, required String body, String? soundUri}) async {

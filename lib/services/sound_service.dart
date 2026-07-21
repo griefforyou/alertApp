@@ -1,15 +1,20 @@
 import 'dart:math';
 import 'dart:typed_data';
 import 'package:audioplayers/audioplayers.dart';
+import 'package:flutter/foundation.dart';
 
 class SoundService {
   final _player = AudioPlayer();
   final Map<String, Uint8List> _cache = {};
 
   Future<void> playBuiltin(String name) async {
-    final data = _getSound(name);
-    await _player.stop();
-    await _player.play(BytesSource(data));
+    try {
+      final data = _getSound(name);
+      await _player.stop();
+      await _player.play(BytesSource(data));
+    } catch (e) {
+      debugPrint('SoundService.playBuiltin($name) error: $e');
+    }
   }
 
   Future<void> playBeep() => playBuiltin('gentle');

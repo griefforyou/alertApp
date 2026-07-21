@@ -69,15 +69,16 @@ class _TimerPageState extends State<TimerPage> {
   }
 
   Future<void> _initAsync() async {
-    await _notificationService.initialize();
-    _profiles = await _storageService.loadProfiles();
-    await _timerService.restoreFromStorage();
-    await _loadTodayRecord();
     final saved = await _storageService.loadNotificationSound();
     _notificationSoundUri = saved['uri'] ?? 'default';
     _notificationSoundTitle = saved['title'] ?? '默认系统铃声';
     _notificationService.setSoundUri(_notificationSoundUri != 'default' ? _notificationSoundUri : null);
     if (mounted) setState(() {});
+
+    await _notificationService.initialize();
+    _profiles = await _storageService.loadProfiles();
+    await _timerService.restoreFromStorage();
+    await _loadTodayRecord();
   }
 
   int get _displayStudySeconds {
@@ -141,7 +142,6 @@ class _TimerPageState extends State<TimerPage> {
           title: "$_typeName结束",
           body: _overlayBody,
         );
-        _soundService.playBeep();
       } else if (s.currentPhase == Phase.learning) {
         _overlayTitle = "休息结束！";
         _overlayBody = "${_groupText(s)}开始第 ${s.currentCycle} 轮$_typeName";
@@ -151,7 +151,6 @@ class _TimerPageState extends State<TimerPage> {
           title: "休息结束",
           body: _overlayBody,
         );
-        _soundService.playBeep();
       } else if (s.currentPhase == Phase.finished) {
         _overlayTitle = "全部完成！";
         _overlayBody = "今天的$_typeName任务已完成";
@@ -426,10 +425,6 @@ class _TimerPageState extends State<TimerPage> {
     if (!mounted) return;
 
     final builtinSounds = _soundPickerService.builtinSounds;
-    final allSounds = [
-      ...builtinSounds,
-      ...systemSounds,
-    ];
 
     String pendingUri = _notificationSoundUri;
     String pendingTitle = _notificationSoundTitle;
@@ -441,130 +436,135 @@ class _TimerPageState extends State<TimerPage> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setDialogState) => SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 16),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Padding(
-                  padding: const EdgeInsets.only(left: 16, bottom: 8),
-                  child: Text("选择通知铃声",
-                    style: Theme.of(ctx).textTheme.titleLarge,
-                  ),
+        builder: (ctx, setDialogState) {
+          Widget soundTile(Map<String, String> s) {
+            final uri = s['uri'] ?? '';
+            final rawTitle = s['title'] ?? '';
+            final isBuiltin = uri.startsWith('builtin:');
+            final displayTitle = isBuiltin ? '内置: $rawTitle' : '系统: $rawTitle';
+            final isPreviewing = previewingUri == uri;
+            return ListTile(
+              leading: IconButton(
+                icon: Icon(
+                  isPreviewing ? Icons.stop_circle_outlined : Icons.play_circle_outline,
+                  color: isPreviewing ? Theme.of(ctx).colorScheme.error : null,
                 ),
-                SizedBox(
-                  height: (allSounds.length + 1) * 56.0 > 360 ? 360 : (allSounds.length + 1) * 56.0,
-                  child: ListView(
-                    shrinkWrap: true,
-                    children: [
-                      ListTile(
-                        leading: const Icon(Icons.volume_up_outlined),
-                        title: const Text("默认系统铃声"),
-                        trailing: pendingUri == 'default' ? Icon(Icons.check, color: Theme.of(ctx).colorScheme.primary) : null,
-                        onTap: () {
-                          setDialogState(() {
-                            pendingUri = 'default';
-                            pendingTitle = '默认系统铃声';
-                          });
-                        },
-                      ),
-                      if (builtinSounds.isNotEmpty) ...[
-                        Padding(
-                          padding: const EdgeInsets.only(left: 16, top: 8, bottom: 4),
-                          child: Text("内置铃声",
-                            style: Theme.of(ctx).textTheme.labelSmall?.copyWith(color: Theme.of(ctx).colorScheme.onSurfaceVariant),
-                          ),
-                        ),
-                        ...builtinSounds.map((s) => _buildSoundTile(s, ctx, setDialogState, () => pendingUri, (v) => pendingUri = v, (v) => pendingTitle = v, () => previewingUri, (v) => previewingUri = v)),
-                      ],
-                      if (systemSounds.isNotEmpty) ...[
-                        Padding(
-                          padding: const EdgeInsets.only(left: 16, top: 8, bottom: 4),
-                          child: Text("系统铃声",
-                            style: Theme.of(ctx).textTheme.labelSmall?.copyWith(color: Theme.of(ctx).colorScheme.onSurfaceVariant),
-                          ),
-                        ),
-                        ...systemSounds.map((s) => _buildSoundTile(s, ctx, setDialogState, () => pendingUri, (v) => pendingUri = v, (v) => pendingTitle = v, () => previewingUri, (v) => previewingUri = v)),
-                      ],
-                    ],
-                  ),
-                ),
-                const Divider(),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: OutlinedButton(
-                          onPressed: () {
-                            _soundPickerService.stopRingtone();
-                            Navigator.pop(ctx);
-                          },
-                          child: const Text("取消"),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: FilledButton(
-                          onPressed: () {
-                            _soundPickerService.stopRingtone();
-                            _notificationSoundUri = pendingUri;
-                            _notificationSoundTitle = _soundTitleFor(pendingUri, pendingTitle);
-                            _notificationService.setSoundUri(pendingUri != 'default' ? pendingUri : null);
-                            _storageService.saveNotificationSound(pendingUri, _notificationSoundTitle);
-                            Navigator.pop(ctx);
-                            setState(() {});
-                          },
-                          child: const Text("确定"),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSoundTile(Map<String, String> s, BuildContext ctx, StateSetter setDialogState, String Function() getPending, void Function(String) setPending, void Function(String) setPendingTitle, String? Function() getPreview, void Function(String?) setPreview) {
-    final uri = s['uri'] ?? '';
-    final title = s['title'] ?? '';
-    final isBuiltin = uri.startsWith('builtin:');
-    final isPreviewing = getPreview() == uri;
-    return ListTile(
-      leading: IconButton(
-        icon: Icon(
-          isPreviewing ? Icons.stop_circle_outlined : Icons.play_circle_outline,
-          color: isPreviewing ? Theme.of(ctx).colorScheme.error : null,
-        ),
-        onPressed: () async {
-          if (isPreviewing) {
-            await _soundPickerService.stopRingtone();
-            setDialogState(() => setPreview(null));
-          } else if (isBuiltin) {
-            await _soundPickerService.stopRingtone();
-            await _soundService.playBuiltin(uri.substring(8));
-            setDialogState(() => setPreview(uri));
-          } else {
-            await _soundPickerService.stopRingtone();
-            await _soundPickerService.playRingtone(uri);
-            setDialogState(() => setPreview(uri));
+                onPressed: () async {
+                  if (isPreviewing) {
+                    await _soundPickerService.stopRingtone();
+                    setDialogState(() => previewingUri = null);
+                  } else if (isBuiltin) {
+                    await _soundPickerService.stopRingtone();
+                    await _soundService.playBuiltin(uri.substring(8));
+                    setDialogState(() => previewingUri = uri);
+                  } else {
+                    await _soundPickerService.stopRingtone();
+                    await _soundPickerService.playRingtone(uri);
+                    setDialogState(() => previewingUri = uri);
+                  }
+                },
+              ),
+              title: Text(rawTitle),
+              trailing: pendingUri == uri ? Icon(Icons.check, color: Theme.of(ctx).colorScheme.primary) : null,
+              onTap: () {
+                setDialogState(() {
+                  pendingUri = uri;
+                  pendingTitle = displayTitle;
+                });
+              },
+            );
           }
+
+          return SafeArea(
+            minimum: const EdgeInsets.symmetric(vertical: 16),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                maxHeight: MediaQuery.of(ctx).size.height * 0.75,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.only(left: 16, right: 16, bottom: 8),
+                    child: Text("选择通知铃声",
+                      style: Theme.of(ctx).textTheme.titleLarge,
+                    ),
+                  ),
+                  Flexible(
+                    child: ListView(
+                      children: [
+                        ListTile(
+                          leading: const Icon(Icons.volume_up_outlined),
+                          title: const Text("默认系统铃声"),
+                          trailing: pendingUri == 'default' ? Icon(Icons.check, color: Theme.of(ctx).colorScheme.primary) : null,
+                          onTap: () {
+                            setDialogState(() {
+                              pendingUri = 'default';
+                              pendingTitle = '默认系统铃声';
+                            });
+                          },
+                        ),
+                        if (builtinSounds.isNotEmpty) ...[
+                          Padding(
+                            padding: const EdgeInsets.only(left: 16, top: 8, bottom: 4),
+                            child: Text("内置铃声",
+                              style: Theme.of(ctx).textTheme.labelSmall?.copyWith(color: Theme.of(ctx).colorScheme.onSurfaceVariant),
+                            ),
+                          ),
+                          ...builtinSounds.map((s) => soundTile(s)),
+                        ],
+                        if (systemSounds.isNotEmpty) ...[
+                          Padding(
+                            padding: const EdgeInsets.only(left: 16, top: 8, bottom: 4),
+                            child: Text("系统铃声",
+                              style: Theme.of(ctx).textTheme.labelSmall?.copyWith(color: Theme.of(ctx).colorScheme.onSurfaceVariant),
+                            ),
+                          ),
+                          ...systemSounds.map((s) => soundTile(s)),
+                        ],
+                      ],
+                    ),
+                  ),
+                  const Divider(),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton(
+                            onPressed: () {
+                              _soundPickerService.stopRingtone();
+                              Navigator.pop(ctx);
+                            },
+                            child: const Text("取消"),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: FilledButton(
+                            onPressed: () async {
+                              _soundPickerService.stopRingtone();
+                              _notificationSoundUri = pendingUri;
+                              _notificationSoundTitle = pendingTitle;
+                              _notificationService.setSoundUri(pendingUri != 'default' ? pendingUri : null);
+                              await _storageService.saveNotificationSound(pendingUri, pendingTitle);
+                              if (!ctx.mounted) return;
+                              Navigator.pop(ctx);
+                              setState(() {});
+                            },
+                            child: const Text("确定"),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
         },
       ),
-      title: Text(title),
-      trailing: getPending() == uri ? Icon(Icons.check, color: Theme.of(ctx).colorScheme.primary) : null,
-      onTap: () {
-        setDialogState(() {
-          setPending(uri);
-          setPendingTitle(title);
-        });
-      },
     );
   }
 
@@ -800,12 +800,6 @@ class _TimerPageState extends State<TimerPage> {
     );
   }
 
-  String _soundTitleFor(String uri, String title) {
-    if (uri == 'default') return '默认系统铃声';
-    if (uri.startsWith('builtin:')) return '内置: $title';
-    if (uri.startsWith('content://')) return '系统: $title';
-    return title;
-  }
 }
 
 class _ThemeTile extends StatelessWidget {
