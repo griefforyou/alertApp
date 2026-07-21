@@ -168,12 +168,14 @@ class _TimerPageState extends State<TimerPage> {
     _playPhaseSound();
   }
 
-  // Windows 无法用自定义音频作通知音：内置铃声时 toast 已静音，这里补播；
+  // Windows 和 Android release 下无法可靠用自定义音频作通知音：
+  // 内置铃声时通知已静音，这里用 SoundService 播放 assets 里的 wav 补上；
   // 其他平台靠通知系统自身的 sound，不在此重复播放以免双重声音。
   void _playPhaseSound() {
-    if (defaultTargetPlatform != TargetPlatform.windows) return;
     final uri = _notificationSoundUri;
-    if (uri.startsWith('builtin:')) {
+    if (!uri.startsWith('builtin:')) return;
+    if (defaultTargetPlatform == TargetPlatform.windows ||
+        defaultTargetPlatform == TargetPlatform.android) {
       _soundService.playBuiltin(uri.substring(8));
     }
   }

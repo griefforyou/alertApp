@@ -86,12 +86,14 @@ class NotificationIO {
     }
 
     if (soundUri.startsWith('builtin:')) {
-      final name = soundUri.substring(8);
+      // Android release \u6784\u5efa\u4e0d\u4f1a\u628a res/raw \u7684 wav \u6253\u5305\u8fdb apk\uff0c
+      // RawResourceAndroidNotificationSound \u627e\u4e0d\u5230\u8d44\u6e90\u4f1a\u65e0\u58f0\u3002
+      // \u6539\u4e3a\u901a\u77e5\u9759\u97f3\uff0c\u7531\u5e94\u7528\u5c42\u7528 SoundService \u64ad\u653e assets \u91cc\u7684 wav\u3002
       return AndroidNotificationDetails(
         channelId, '\u5b66\u4e60\u8ba1\u65f6\u5668',
         channelDescription: '\u5b66\u4e60\u8ba1\u65f6\u5668\u63d0\u9192\u901a\u77e5',
         importance: Importance.high, priority: Priority.high,
-        sound: RawResourceAndroidNotificationSound(name),
+        playSound: false,
       );
     }
 
