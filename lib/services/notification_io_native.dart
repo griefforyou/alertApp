@@ -5,7 +5,6 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 class NotificationIO {
   final FlutterLocalNotificationsPlugin _plugin = FlutterLocalNotificationsPlugin();
   bool _initialized = false;
-  String? _lastChannelId;
 
   Future<void> initialize() async {
     if (_initialized) return;
@@ -52,7 +51,7 @@ class NotificationIO {
     try {
       final androidDetails = _buildAndroidDetails(soundUri);
       final iosDetails = _buildIosDetails(soundUri);
-      const windowsDetails = WindowsNotificationDetails();
+      final windowsDetails = _buildWindowsDetails(soundUri);
       final details = NotificationDetails(android: androidDetails, iOS: iosDetails, windows: windowsDetails);
       final id = DateTime.now().millisecondsSinceEpoch & 0x7FFFFFFF;
       await _plugin.show(id: id, title: title, body: body, notificationDetails: details);
@@ -112,6 +111,15 @@ class NotificationIO {
       return DarwinNotificationDetails(sound: name);
     }
     return const DarwinNotificationDetails();
+  }
+
+  WindowsNotificationDetails _buildWindowsDetails(String? soundUri) {
+    // Windows 无法可靠播放自定义音频作为通知音（仅 MSIX 打包才支持 asset）。
+    // 选内置铃声时让 toast 静音，改由应用层用 SoundService 播放，避免双重声音。
+    if (Platform.isWindows && soundUri != null && soundUri.startsWith('builtin:')) {
+      return WindowsNotificationDetails(audio: WindowsNotificationAudio.silent());
+    }
+    return const WindowsNotificationDetails();
   }
 
   void cancelAll() {

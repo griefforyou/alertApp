@@ -1,4 +1,5 @@
 import "package:flutter/material.dart";
+import "package:flutter/foundation.dart";
 import "package:flutter/gestures.dart";
 import "../models/session_state.dart";
 import "../models/daily_record.dart";
@@ -157,9 +158,24 @@ class _TimerPageState extends State<TimerPage> {
         _overlayModal = false;
         _addStats(s.studyMinutes * 60, 1);
         _saveTodayRecord();
+        _notificationService.showNotification(
+          title: "全部完成",
+          body: _overlayBody,
+        );
       }
       _showOverlay = true;
     });
+    _playPhaseSound();
+  }
+
+  // Windows 无法用自定义音频作通知音：内置铃声时 toast 已静音，这里补播；
+  // 其他平台靠通知系统自身的 sound，不在此重复播放以免双重声音。
+  void _playPhaseSound() {
+    if (defaultTargetPlatform != TargetPlatform.windows) return;
+    final uri = _notificationSoundUri;
+    if (uri.startsWith('builtin:')) {
+      _soundService.playBuiltin(uri.substring(8));
+    }
   }
 
   void _switchProfile(int index) {
