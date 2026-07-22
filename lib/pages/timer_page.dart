@@ -80,6 +80,7 @@ class _TimerPageState extends State<TimerPage> {
     _profiles = await _storageService.loadProfiles();
     await _timerService.restoreFromStorage();
     await _loadTodayRecord();
+    if (mounted) setState(() {});
   }
 
   int get _displayStudySeconds {
