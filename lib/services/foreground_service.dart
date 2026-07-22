@@ -13,8 +13,8 @@ class ForegroundService {
     FlutterForegroundTask.init(
       androidNotificationOptions: AndroidNotificationOptions(
         channelId: 'timer_channel',
-        channelName: '\u8ba1\u65f6\u5668',
-        channelDescription: '\u5b66\u4e60\u8ba1\u65f6\u5668\u540e\u53f0\u8fd0\u884c',
+        channelName: '计时器',
+        channelDescription: '学习计时器后台运行',
         channelImportance: NotificationChannelImportance.LOW,
         priority: NotificationPriority.LOW,
         enableVibration: false,
@@ -39,8 +39,8 @@ class ForegroundService {
     if (running) return;
 
     await FlutterForegroundTask.startService(
-      notificationTitle: '\u5b66\u4e60\u8ba1\u65f6\u5668',
-      notificationText: '\u6b63\u5728\u8ba1\u65f6...',
+      notificationTitle: '学习计时器',
+      notificationText: '正在计时...',
     );
   }
 

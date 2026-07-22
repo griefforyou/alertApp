@@ -16,7 +16,7 @@ class NotificationIO {
       requestSoundPermission: true,
     );
     const windowsSettings = WindowsInitializationSettings(
-      appName: '\u5b66\u4e60\u8ba1\u65f6\u5668',
+      appName: '学习计时器',
       appUserModelId: 'StudyTimer.StudyTimer',
       guid: 'd49b0314-ee7a-4626-bf79-97cdb8a991bb',
     );
@@ -85,36 +85,36 @@ class NotificationIO {
 
     if (soundUri == null || soundUri == 'default') {
       return AndroidNotificationDetails(
-        channelId, '\u5b66\u4e60\u8ba1\u65f6\u5668',
-        channelDescription: '\u5b66\u4e60\u8ba1\u65f6\u5668\u63d0\u9192\u901a\u77e5',
+        channelId, '学习计时器',
+        channelDescription: '学习计时器提醒通知',
         importance: Importance.high, priority: Priority.high,
       );
     }
 
     if (soundUri.startsWith('content://')) {
       return AndroidNotificationDetails(
-        channelId, '\u5b66\u4e60\u8ba1\u65f6\u5668',
-        channelDescription: '\u5b66\u4e60\u8ba1\u65f6\u5668\u63d0\u9192\u901a\u77e5',
+        channelId, '学习计时器',
+        channelDescription: '学习计时器提醒通知',
         importance: Importance.high, priority: Priority.high,
         sound: UriAndroidNotificationSound(soundUri),
       );
     }
 
     if (soundUri.startsWith('builtin:')) {
-      // Android release \u6784\u5efa\u4e0d\u4f1a\u628a res/raw \u7684 wav \u6253\u5305\u8fdb apk\uff0c
-      // RawResourceAndroidNotificationSound \u627e\u4e0d\u5230\u8d44\u6e90\u4f1a\u65e0\u58f0\u3002
-      // \u6539\u4e3a\u901a\u77e5\u9759\u97f3\uff0c\u7531\u5e94\u7528\u5c42\u7528 SoundService \u64ad\u653e assets \u91cc\u7684 wav\u3002
+      // Android release 构建不会把 res/raw 的 wav 打包进 apk，
+      // RawResourceAndroidNotificationSound 找不到资源会无声。
+      // 改为通知静音，由应用层用 SoundService 播放 assets 里的 wav。
       return AndroidNotificationDetails(
-        channelId, '\u5b66\u4e60\u8ba1\u65f6\u5668',
-        channelDescription: '\u5b66\u4e60\u8ba1\u65f6\u5668\u63d0\u9192\u901a\u77e5',
+        channelId, '学习计时器',
+        channelDescription: '学习计时器提醒通知',
         importance: Importance.high, priority: Priority.high,
         playSound: false,
       );
     }
 
     return AndroidNotificationDetails(
-      channelId, '\u5b66\u4e60\u8ba1\u65f6\u5668',
-      channelDescription: '\u5b66\u4e60\u8ba1\u65f6\u5668\u63d0\u9192\u901a\u77e5',
+      channelId, '学习计时器',
+      channelDescription: '学习计时器提醒通知',
       importance: Importance.high, priority: Priority.high,
     );
   }
