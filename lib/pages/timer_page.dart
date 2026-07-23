@@ -153,6 +153,7 @@ class _TimerPageState extends State<TimerPage> {
     if (!mounted) return;
     final s = _timerService.state;
     if (s == null) return;
+    _notificationService.cancelScheduled();
     setState(() {
       if (s.currentPhase == Phase.breaking) {
         _overlayTitle = "$_typeName结束！";
@@ -164,6 +165,7 @@ class _TimerPageState extends State<TimerPage> {
           title: "$_typeName结束",
           body: _overlayBody,
         );
+        _scheduleNextNotification(s);
       } else if (s.currentPhase == Phase.learning) {
         _overlayTitle = "休息结束！";
         _overlayBody = "${_groupText(s)}开始第 ${s.currentCycle} 轮$_typeName";
@@ -173,6 +175,7 @@ class _TimerPageState extends State<TimerPage> {
           title: "休息结束",
           body: _overlayBody,
         );
+        _scheduleNextNotification(s);
       } else if (s.currentPhase == Phase.finished) {
         _overlayTitle = "全部完成！";
         _overlayBody = "今天的$_typeName任务已完成";
@@ -187,6 +190,26 @@ class _TimerPageState extends State<TimerPage> {
       _showOverlay = true;
     });
     _playPhaseSound();
+  }
+
+  void _scheduleNextNotification(SessionState s) {
+    if (defaultTargetPlatform != TargetPlatform.iOS) return;
+    final uri = _notificationSoundUri;
+    if (s.currentPhase == Phase.breaking) {
+      _notificationService.schedule(
+        title: "休息结束",
+        body: "${_groupText(s)}开始第 ${s.currentCycle} 轮$_typeName",
+        date: DateTime.now().add(Duration(minutes: s.breakMinutes)),
+        soundUri: uri != 'default' ? uri : null,
+      );
+    } else if (s.currentPhase == Phase.learning) {
+      _notificationService.schedule(
+        title: "$_typeName结束",
+        body: "${_groupText(s)}休息 ${s.breakMinutes} 分钟",
+        date: DateTime.now().add(Duration(minutes: s.studyMinutes)),
+        soundUri: uri != 'default' ? uri : null,
+      );
+    }
   }
 
   // Windows、Android release 和 Web 无法可靠用自定义音频作通知音：
@@ -348,13 +371,38 @@ class _TimerPageState extends State<TimerPage> {
   }
 
   void _handlePause() {
+    _notificationService.cancelScheduled();
     _timerService.pause();
     setState(() {});
   }
 
   void _handleResume() {
+    _rescheduleIfNeeded();
     _timerService.resume();
     setState(() {});
+  }
+
+  void _rescheduleIfNeeded() {
+    if (defaultTargetPlatform != TargetPlatform.iOS) return;
+    final s = _timerService.state;
+    final r = _timerService.remaining;
+    if (s == null || r == null) return;
+    final uri = _notificationSoundUri;
+    if (s.currentPhase == Phase.learning) {
+      _notificationService.schedule(
+        title: "$_typeName结束",
+        body: "${_groupText(s)}休息 ${s.breakMinutes} 分钟",
+        date: DateTime.now().add(r),
+        soundUri: uri != 'default' ? uri : null,
+      );
+    } else if (s.currentPhase == Phase.breaking) {
+      _notificationService.schedule(
+        title: "休息结束",
+        body: "${_groupText(s)}开始第 ${s.currentCycle} 轮$_typeName",
+        date: DateTime.now().add(r),
+        soundUri: uri != 'default' ? uri : null,
+      );
+    }
   }
 
   Future<void> _handleStop() async {
@@ -391,6 +439,7 @@ class _TimerPageState extends State<TimerPage> {
       if (addSec > 0) _addStats(addSec, 0);
       _saveTodayRecord();
     }
+    _notificationService.cancelScheduled();
     _notificationService.cancelAll();
     await _timerService.stop();
     setState(() {});

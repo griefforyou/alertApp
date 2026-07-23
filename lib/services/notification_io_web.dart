@@ -26,5 +26,9 @@ class NotificationIO {
 
   Future<void> requestPermission() async {} 
 
+  Future<void> schedule({required String title, required String body, required DateTime date, String? soundUri}) async {}
+
+  Future<void> cancelScheduled() async {}
+
   void cancelAll() {}
 }

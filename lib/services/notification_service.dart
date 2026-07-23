@@ -8,6 +8,11 @@ class NotificationService {
 
   Future<void> requestPermission() => _io.requestPermission();
 
+  Future<void> schedule({required String title, required String body, required DateTime date, String? soundUri}) =>
+      _io.schedule(title: title, body: body, date: date, soundUri: soundUri);
+
+  Future<void> cancelScheduled() => _io.cancelScheduled();
+
   void setSoundUri(String? uri) {
     _soundUri = uri;
   }

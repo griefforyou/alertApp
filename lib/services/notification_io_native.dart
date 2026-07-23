@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:timezone/timezone.dart' as tz;
 
 class NotificationIO {
   final FlutterLocalNotificationsPlugin _plugin = FlutterLocalNotificationsPlugin();
@@ -57,6 +58,43 @@ class NotificationIO {
       await _plugin.show(id: id, title: title, body: body, notificationDetails: details);
     } catch (e) {
       debugPrint('Failed to show notification: $e');
+    }
+  }
+
+  static const int _scheduledNotifId = 999000001;
+
+  Future<void> schedule({
+    required String title,
+    required String body,
+    required DateTime date,
+    String? soundUri,
+  }) async {
+    if (!_initialized) return;
+    try {
+      final androidDetails = _buildAndroidDetails(soundUri);
+      final iosDetails = _buildIosDetails(soundUri);
+      final windowsDetails = _buildWindowsDetails(soundUri);
+      final details = NotificationDetails(android: androidDetails, iOS: iosDetails, windows: windowsDetails);
+      final tzDate = tz.TZDateTime.from(date, tz.local);
+      await _plugin.zonedSchedule(
+        id: _scheduledNotifId,
+        title: title,
+        body: body,
+        scheduledDate: tzDate,
+        notificationDetails: details,
+        androidScheduleMode: AndroidScheduleMode.exact,
+      );
+    } catch (e) {
+      debugPrint('Failed to schedule notification: $e');
+    }
+  }
+
+  Future<void> cancelScheduled() async {
+    if (!_initialized) return;
+    try {
+      await _plugin.cancel(id: _scheduledNotifId);
+    } catch (e) {
+      debugPrint('Failed to cancel scheduled notification: $e');
     }
   }
 

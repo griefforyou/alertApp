@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:timezone/data/latest.dart' as tz;
 import 'pages/timer_page.dart';
 import 'services/storage_service.dart';
 import 'services/foreground_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  tz.initializeTimezones();
   ForegroundService.instance.init();
   runApp(const StudyTimerApp());
 }
