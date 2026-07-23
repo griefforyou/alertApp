@@ -6,7 +6,7 @@ import 'services/foreground_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  tz.initializeTimezones();
+  tz.initializeTimeZones();
   ForegroundService.instance.init();
   runApp(const StudyTimerApp());
 }
