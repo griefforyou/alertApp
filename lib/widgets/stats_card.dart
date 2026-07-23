@@ -38,11 +38,7 @@ class StatsCard extends StatelessWidget {
                 color: cs.primary,
               ),
             ),
-            const Spacer(),
-            Text(
-              '完成 $completedCycles 轮',
-              style: TextStyle(fontSize: 14, color: cs.onSurface.withValues(alpha: 0.6)),
-            ),
+
           ],
         ),
       ),
