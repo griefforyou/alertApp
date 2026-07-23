@@ -1,6 +1,8 @@
 import 'dart:html' show window;
 
 class StorageIO {
+  Future<String> get documentsPath async => 'web:localStorage';
+
   Future<String?> readString(String key) async {
     return window.localStorage[key];
   }

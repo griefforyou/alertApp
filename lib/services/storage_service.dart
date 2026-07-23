@@ -4,6 +4,7 @@ import 'storage_io.dart';
 import '../models/session_state.dart';
 import '../models/daily_record.dart';
 import '../models/timer_profile.dart';
+import '../models/history_record.dart';
 
 const _defaultNotificationSoundUri = 'default';
 
@@ -13,8 +14,11 @@ class StorageService {
   static const _profilesFile = 'timer_profiles.json';
   static const _themeModeFile = 'theme_mode.json';
   static const _notificationSoundFile = 'notification_sound.json';
+  static const _historyFile = 'history_records.json';
 
   final StorageIO _io = StorageIO();
+
+  Future<String> get documentsPath => _io.documentsPath;
 
   Future<SessionState?> loadSession() async {
     try {
@@ -43,7 +47,13 @@ class StorageService {
     try {
       final json = await _io.readString(_todayRecordFile);
       if (json == null) return null;
-      return DailyRecord.fromJson(jsonDecode(json) as Map<String, dynamic>);
+      final record = DailyRecord.fromJson(jsonDecode(json) as Map<String, dynamic>);
+      // 跨天后旧记录失效：仅当记录日期为今天时才返回，否则视为空。
+      final today = DateTime.now();
+      final isToday = record.date.year == today.year &&
+          record.date.month == today.month &&
+          record.date.day == today.day;
+      return isToday ? record : null;
     } catch (e) {
       debugPrint('Failed to load today record: $e');
       return null;
@@ -121,6 +131,39 @@ class StorageService {
       await _io.writeString(_notificationSoundFile, jsonEncode({'uri': uri, 'title': title}));
     } catch (e) {
       debugPrint('Failed to save notification sound: $e');
+    }
+  }
+
+  Future<List<HistoryRecord>> loadHistory() async {
+    try {
+      final json = await _io.readString(_historyFile);
+      if (json == null) return [];
+      final list = jsonDecode(json) as List<dynamic>;
+      return list
+          .map((e) => HistoryRecord.fromJson(e as Map<String, dynamic>))
+          .toList();
+    } catch (e) {
+      debugPrint('Failed to load history: $e');
+      return [];
+    }
+  }
+
+  Future<void> appendHistory(HistoryRecord record) async {
+    try {
+      final records = await loadHistory();
+      records.add(record);
+      await _io.writeString(
+          _historyFile, jsonEncode(records.map((r) => r.toJson()).toList()));
+    } catch (e) {
+      debugPrint('Failed to append history: $e');
+    }
+  }
+
+  Future<void> clearHistory() async {
+    try {
+      await _io.delete(_historyFile);
+    } catch (e) {
+      debugPrint('Failed to clear history: $e');
     }
   }
 }

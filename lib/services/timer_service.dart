@@ -5,6 +5,18 @@ import "../models/timer_profile.dart";
 import "storage_service.dart";
 import "foreground_service.dart";
 
+class StudyPhaseCompleted {
+  final DateTime startTime;
+  final DateTime endTime;
+  final int durationSeconds;
+
+  const StudyPhaseCompleted({
+    required this.startTime,
+    required this.endTime,
+    required this.durationSeconds,
+  });
+}
+
 class TimerService extends ChangeNotifier {
   final StorageService _storage;
 
@@ -34,6 +46,7 @@ class TimerService extends ChangeNotifier {
   bool get isFinished => _state?.currentPhase == Phase.finished;
 
   VoidCallback? onPhaseChanged;
+  void Function(StudyPhaseCompleted)? onStudyPhaseCompleted;
 
   Future<void> start(TimerProfile profile) async {
     final now = DateTime.now();
@@ -88,16 +101,20 @@ class TimerService extends ChangeNotifier {
           !isLastRound || (s.multiCycle && !isLastCycle);
 
       if (hasNextLearning) {
+        final now = DateTime.now();
         _state = s.copyWith(
           currentPhase: Phase.breaking,
-          phaseStartTime: DateTime.now(),
+          phaseStartTime: now,
         );
         _remaining = Duration(minutes: _state!.breakMinutes);
+        _emitStudyPhaseCompleted(s, now);
       } else {
+        final now = DateTime.now();
         _state = s.copyWith(currentPhase: Phase.finished);
         _tickTimer?.cancel();
         _tickTimer = null;
         _storage.clearSession();
+        _emitStudyPhaseCompleted(s, now);
       }
     } else if (_state!.currentPhase == Phase.breaking) {
       final s = _state!;
@@ -143,6 +160,16 @@ class TimerService extends ChangeNotifier {
       ForegroundService.instance.stop();
     }
     notifyListeners();
+  }
+
+  void _emitStudyPhaseCompleted(SessionState s, DateTime endTime) {
+    final cb = onStudyPhaseCompleted;
+    if (cb == null) return;
+    cb(StudyPhaseCompleted(
+      startTime: s.phaseStartTime,
+      endTime: endTime,
+      durationSeconds: s.studyMinutes * 60,
+    ));
   }
 
   void pause() {

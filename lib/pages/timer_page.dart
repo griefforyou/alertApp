@@ -4,6 +4,7 @@ import "package:flutter/gestures.dart";
 import "../models/session_state.dart";
 import "../models/daily_record.dart";
 import "../models/timer_profile.dart";
+import "../models/history_record.dart";
 import "../services/timer_service.dart";
 import "../services/notification_service.dart";
 import "../services/sound_service.dart";
@@ -15,6 +16,7 @@ import "../widgets/preset_card.dart";
 import "../widgets/stats_card.dart";
 import "../widgets/phase_overlay.dart";
 import "preset_edit_page.dart";
+import "history_page.dart";
 
 class TimerPage extends StatefulWidget {
   final ValueChanged<ThemeMode>? onThemeModeChanged;
@@ -60,9 +62,21 @@ class _TimerPageState extends State<TimerPage> {
     _timerService = TimerService(_storageService);
 
     _timerService.onPhaseChanged = _onPhaseChanged;
+    _timerService.onStudyPhaseCompleted = _onStudyPhaseCompleted;
     _timerService.addListener(_onTimerUpdate);
 
     _initAsync();
+  }
+
+  void _onStudyPhaseCompleted(StudyPhaseCompleted p) {
+    if (!mounted || _profiles.isEmpty) return;
+    final r = HistoryRecord(
+      id: '${p.startTime.toIso8601String()}_${p.endTime.millisecondsSinceEpoch}',
+      typeName: _typeName,
+      startTime: p.startTime,
+      durationSeconds: p.durationSeconds,
+    );
+    _storageService.appendHistory(r);
   }
 
   void _onTimerUpdate() {
@@ -75,6 +89,9 @@ class _TimerPageState extends State<TimerPage> {
     _notificationSoundTitle = saved['title'] ?? '默认系统铃声';
     _notificationService.setSoundUri(_notificationSoundUri != 'default' ? _notificationSoundUri : null);
     if (mounted) setState(() {});
+
+    final storagePath = await _storageService.documentsPath;
+    debugPrint('Storage path: $storagePath');
 
     await _notificationService.initialize();
     _profiles = await _storageService.loadProfiles();
@@ -169,13 +186,15 @@ class _TimerPageState extends State<TimerPage> {
     _playPhaseSound();
   }
 
-  // Windows 和 Android release 下无法可靠用自定义音频作通知音：
-  // 内置铃声时通知已静音，这里用 SoundService 播放 assets 里的 wav 补上；
+  // Windows、Android release 和 Web 无法可靠用自定义音频作通知音：
+  // 内置铃声时通知已静音（Web 浏览器通知不支持自定义声音），
+  // 这里用 SoundService 播放 assets 里的 wav 补上；
   // 其他平台靠通知系统自身的 sound，不在此重复播放以免双重声音。
   void _playPhaseSound() {
     final uri = _notificationSoundUri;
     if (!uri.startsWith('builtin:')) return;
-    if (defaultTargetPlatform == TargetPlatform.windows ||
+    if (kIsWeb ||
+        defaultTargetPlatform == TargetPlatform.windows ||
         defaultTargetPlatform == TargetPlatform.android) {
       _soundService.playBuiltin(uri.substring(8));
     }
@@ -587,6 +606,13 @@ class _TimerPageState extends State<TimerPage> {
     );
   }
 
+  Future<void> _openHistory() async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const HistoryPage()),
+    );
+  }
+
   Future<void> _handleEditProfile() async {
     final result = await Navigator.push<TimerProfile>(
       context,
@@ -667,6 +693,11 @@ class _TimerPageState extends State<TimerPage> {
           appBar: AppBar(
             title: const Text("计时器"),
             actions: [
+              IconButton(
+                icon: const Icon(Icons.history),
+                onPressed: _openHistory,
+                tooltip: "历史记录",
+              ),
               IconButton(
                 icon: const Icon(Icons.settings_outlined),
                 onPressed: _showThemeSettings,

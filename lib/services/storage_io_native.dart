@@ -4,6 +4,8 @@ import 'package:path_provider/path_provider.dart';
 class StorageIO {
   Future<Directory> get _dir => getApplicationDocumentsDirectory();
 
+  Future<String> get documentsPath async => (await _dir).path;
+
   Future<String?> readString(String key) async {
     final dir = await _dir;
     final file = File('${dir.path}/$key');
