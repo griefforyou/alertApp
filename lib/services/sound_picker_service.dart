@@ -1,5 +1,4 @@
-import 'dart:io';
-import 'package:flutter/foundation.dart';
+import 'package:flutter/foundation.dart' show kIsWeb, defaultTargetPlatform, TargetPlatform, debugPrint;
 import 'package:flutter/services.dart';
 
 const _builtinSounds = [
@@ -14,8 +13,11 @@ class SoundPickerService {
   bool get hasBuiltinSounds => true;
   List<Map<String, String>> get builtinSounds => _builtinSounds;
 
+  bool get _isAndroid =>
+      !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
+
   Future<List<Map<String, String>>> getSystemSounds() async {
-    if (!Platform.isAndroid) return [];
+    if (!_isAndroid) return [];
     try {
       final result = await _channel.invokeMethod<List<dynamic>>('getNotificationSounds');
       if (result == null) return [];
@@ -33,7 +35,7 @@ class SoundPickerService {
   }
 
   Future<void> playRingtone(String uri) async {
-    if (!Platform.isAndroid) return;
+    if (!_isAndroid) return;
     if (uri.startsWith('builtin:')) return;
     try {
       await _channel.invokeMethod('playRingtone', {'uri': uri});
@@ -43,7 +45,7 @@ class SoundPickerService {
   }
 
   Future<void> stopRingtone() async {
-    if (!Platform.isAndroid) return;
+    if (!_isAndroid) return;
     try {
       await _channel.invokeMethod('stopRingtone');
     } catch (_) {}

@@ -11,9 +11,9 @@ class NotificationIO {
 
     const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
     const iosSettings = DarwinInitializationSettings(
-      requestAlertPermission: true,
-      requestBadgePermission: true,
-      requestSoundPermission: true,
+      requestAlertPermission: false,
+      requestBadgePermission: false,
+      requestSoundPermission: false,
     );
     const windowsSettings = WindowsInitializationSettings(
       appName: '学习计时器',
@@ -121,13 +121,29 @@ class NotificationIO {
 
   DarwinNotificationDetails _buildIosDetails(String? soundUri) {
     if (soundUri == null || soundUri == 'default') {
-      return const DarwinNotificationDetails();
+      return const DarwinNotificationDetails(
+        presentBanner: true,
+        presentList: true,
+        presentSound: true,
+        presentBadge: true,
+      );
     }
     if (soundUri.startsWith('builtin:')) {
       final name = '${soundUri.substring(8)}.wav';
-      return DarwinNotificationDetails(sound: name);
+      return DarwinNotificationDetails(
+        presentBanner: true,
+        presentList: true,
+        presentSound: true,
+        presentBadge: true,
+        sound: name,
+      );
     }
-    return const DarwinNotificationDetails();
+    return const DarwinNotificationDetails(
+      presentBanner: true,
+      presentList: true,
+      presentSound: true,
+      presentBadge: true,
+    );
   }
 
   WindowsNotificationDetails _buildWindowsDetails(String? soundUri) {

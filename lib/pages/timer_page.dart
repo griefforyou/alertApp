@@ -383,8 +383,6 @@ class _TimerPageState extends State<TimerPage> {
       if (s.currentPhase == Phase.learning && r != null) {
         final elapsed = s.studyMinutes * 60 - r.inSeconds;
         if (elapsed > 0) addSec = elapsed;
-      } else if (s.currentPhase == Phase.breaking || s.currentPhase == Phase.finished) {
-        addSec = s.studyMinutes * 60;
       }
       if (addSec > 0) _addStats(addSec, 0);
       _saveTodayRecord();

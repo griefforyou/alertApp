@@ -29,16 +29,28 @@ class StatsCard extends StatelessWidget {
           children: [
             Icon(Icons.bar_chart, color: cs.primary),
             const SizedBox(width: 12),
-            Text('今日$typeName: ', style: TextStyle(fontSize: 16, color: cs.onSurface)),
-            Text(
-              _formattedTime,
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-                color: cs.primary,
+            Expanded(
+              child: Row(
+                children: [
+                  Text('今日$typeName: ', style: TextStyle(fontSize: 16, color: cs.onSurface)),
+                  Text(
+                    _formattedTime,
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: cs.primary,
+                    ),
+                  ),
+                  if (completedCycles > 0) ...[
+                    const SizedBox(width: 8),
+                    Text(
+                      '· $completedCycles 轮',
+                      style: TextStyle(fontSize: 14, color: cs.onSurfaceVariant),
+                    ),
+                  ],
+                ],
               ),
             ),
-
           ],
         ),
       ),
