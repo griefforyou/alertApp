@@ -44,21 +44,6 @@ class NotificationIO {
         }
       }
     }
-    if (defaultTargetPlatform == TargetPlatform.iOS) {
-      final iosPlugin = _plugin.resolvePlatformSpecificImplementation<
-          IOSFlutterLocalNotificationsPlugin>();
-      if (iosPlugin != null) {
-        try {
-          await iosPlugin.requestPermissions(
-            alert: true,
-            badge: true,
-            sound: true,
-          );
-        } catch (e) {
-          debugPrint('Failed to request notification permission: $e');
-        }
-      }
-    }
   }
 
   Future<void> show({required String title, required String body, String? soundUri}) async {
@@ -122,27 +107,33 @@ class NotificationIO {
   DarwinNotificationDetails _buildIosDetails(String? soundUri) {
     if (soundUri == null || soundUri == 'default') {
       return const DarwinNotificationDetails(
+        presentAlert: true,
+        presentBadge: true,
+        presentSound: true,
         presentBanner: true,
         presentList: true,
-        presentSound: true,
-        presentBadge: true,
+        interruptionLevel: InterruptionLevel.active,
       );
     }
     if (soundUri.startsWith('builtin:')) {
       final name = '${soundUri.substring(8)}.wav';
       return DarwinNotificationDetails(
+        presentAlert: true,
+        presentBadge: true,
+        presentSound: false,
         presentBanner: true,
         presentList: true,
-        presentSound: true,
-        presentBadge: true,
+        interruptionLevel: InterruptionLevel.active,
         sound: name,
       );
     }
     return const DarwinNotificationDetails(
+      presentAlert: true,
+      presentBadge: true,
+      presentSound: true,
       presentBanner: true,
       presentList: true,
-      presentSound: true,
-      presentBadge: true,
+      interruptionLevel: InterruptionLevel.active,
     );
   }
 
@@ -153,6 +144,22 @@ class NotificationIO {
       return WindowsNotificationDetails(audio: WindowsNotificationAudio.silent());
     }
     return const WindowsNotificationDetails();
+  }
+
+  Future<void> requestPermission() async {
+    if (defaultTargetPlatform != TargetPlatform.iOS) return;
+    final iosPlugin = _plugin.resolvePlatformSpecificImplementation<
+        IOSFlutterLocalNotificationsPlugin>();
+    if (iosPlugin == null) return;
+    try {
+      await iosPlugin.requestPermissions(
+        alert: true,
+        badge: true,
+        sound: true,
+      );
+    } catch (e) {
+      debugPrint('Failed to request notification permission: $e');
+    }
   }
 
   void cancelAll() {

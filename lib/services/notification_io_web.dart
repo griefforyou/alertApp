@@ -24,5 +24,7 @@ class NotificationIO {
     }
   }
 
+  Future<void> requestPermission() async {} 
+
   void cancelAll() {}
 }

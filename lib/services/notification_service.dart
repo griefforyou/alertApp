@@ -6,6 +6,8 @@ class NotificationService {
 
   Future<void> initialize() => _io.initialize();
 
+  Future<void> requestPermission() => _io.requestPermission();
+
   void setSoundUri(String? uri) {
     _soundUri = uri;
   }

@@ -94,6 +94,9 @@ class _TimerPageState extends State<TimerPage> {
     debugPrint('Storage path: $storagePath');
 
     await _notificationService.initialize();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _notificationService.requestPermission();
+    });
     _profiles = await _storageService.loadProfiles();
     await _timerService.restoreFromStorage();
     await _loadTodayRecord();
@@ -195,7 +198,8 @@ class _TimerPageState extends State<TimerPage> {
     if (!uri.startsWith('builtin:')) return;
     if (kIsWeb ||
         defaultTargetPlatform == TargetPlatform.windows ||
-        defaultTargetPlatform == TargetPlatform.android) {
+        defaultTargetPlatform == TargetPlatform.android ||
+        defaultTargetPlatform == TargetPlatform.iOS) {
       _soundService.playBuiltin(uri.substring(8));
     }
   }
