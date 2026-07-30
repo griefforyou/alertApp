@@ -5,6 +5,13 @@ const _builtinSounds = [
   {'title': '清脆提示', 'uri': 'builtin:chime'},
   {'title': '柔和钟声', 'uri': 'builtin:bell'},
   {'title': '轻音提醒', 'uri': 'builtin:gentle'},
+  {'title': '公鸡叫', 'uri': 'builtin:公鸡叫.mp3'},
+  {'title': '警告', 'uri': 'builtin:警告.mp3'},
+  {'title': '猫叫', 'uri': 'builtin:猫叫.mp3'},
+  {'title': '门铃', 'uri': 'builtin:门铃.mp3'},
+  {'title': '闹钟', 'uri': 'builtin:闹钟.WAV'},
+  {'title': '下课铃声', 'uri': 'builtin:下课铃声.mp3'},
+  {'title': '正确提示', 'uri': 'builtin:正确提示.mp3'},
 ];
 
 class SoundPickerService {

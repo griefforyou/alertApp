@@ -52,6 +52,7 @@ class TimerService extends ChangeNotifier {
     final now = DateTime.now();
     _state = SessionState(
       startTime: now,
+      profileId: profile.id,
       rounds: List.from(profile.rounds),
       roundIndex: 0,
       multiCycle: profile.multiCycle,

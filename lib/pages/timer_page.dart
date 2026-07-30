@@ -70,9 +70,13 @@ class _TimerPageState extends State<TimerPage> {
 
   void _onStudyPhaseCompleted(StudyPhaseCompleted p) {
     if (!mounted || _profiles.isEmpty) return;
+    final pid = _timerService.state?.profileId;
+    final typeName = pid != null
+        ? (_profiles.cast<TimerProfile?>().firstWhere((pr) => pr?.id == pid, orElse: () => null)?.displayName ?? _typeName)
+        : _typeName;
     final r = HistoryRecord(
       id: '${p.startTime.toIso8601String()}_${p.endTime.millisecondsSinceEpoch}',
-      typeName: _typeName,
+      typeName: typeName,
       startTime: p.startTime,
       durationSeconds: p.durationSeconds,
     );
@@ -98,6 +102,11 @@ class _TimerPageState extends State<TimerPage> {
       _notificationService.requestPermission();
     });
     _profiles = await _storageService.loadProfiles();
+    final savedSession = await _storageService.loadSession();
+    if (savedSession?.profileId != null) {
+      final idx = _profiles.indexWhere((p) => p.id == savedSession!.profileId);
+      if (idx >= 0) _selectedIndex = idx;
+    }
     await _timerService.restoreFromStorage();
     await _loadTodayRecord();
     if (mounted) setState(() {});

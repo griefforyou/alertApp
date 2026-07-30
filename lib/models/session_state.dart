@@ -4,6 +4,7 @@ enum Phase { idle, learning, breaking, finished }
 
 class SessionState {
   final DateTime startTime;
+  final String? profileId;
   final List<RoundConfig> rounds;
   final int roundIndex;
   final bool multiCycle;
@@ -16,6 +17,7 @@ class SessionState {
 
   const SessionState({
     required this.startTime,
+    this.profileId,
     required this.rounds,
     required this.roundIndex,
     required this.multiCycle,
@@ -32,6 +34,7 @@ class SessionState {
 
   SessionState copyWith({
     DateTime? startTime,
+    String? profileId,
     List<RoundConfig>? rounds,
     int? roundIndex,
     bool? multiCycle,
@@ -44,6 +47,7 @@ class SessionState {
   }) {
     return SessionState(
       startTime: startTime ?? this.startTime,
+      profileId: profileId ?? this.profileId,
       rounds: rounds ?? this.rounds,
       roundIndex: roundIndex ?? this.roundIndex,
       multiCycle: multiCycle ?? this.multiCycle,
@@ -58,6 +62,7 @@ class SessionState {
 
   Map<String, dynamic> toJson() => {
     'startTime': startTime.toIso8601String(),
+    if (profileId != null) 'profileId': profileId,
     'rounds': rounds.map((r) => r.toJson()).toList(),
     'roundIndex': roundIndex,
     'multiCycle': multiCycle,
@@ -81,6 +86,7 @@ class SessionState {
     }
     return SessionState(
       startTime: DateTime.parse(json['startTime'] as String),
+      profileId: json['profileId'] as String?,
       rounds: rounds,
       roundIndex: json['roundIndex'] as int? ?? 0,
       multiCycle: json['multiCycle'] as bool? ?? true,

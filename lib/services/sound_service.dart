@@ -26,7 +26,8 @@ class SoundService {
   Future<void> playBuiltin(String name) async {
     try {
       await _player.stop();
-      await _player.play(AssetSource('sounds/$name.wav'));
+      final path = name.contains('.') ? name : '$name.wav';
+      await _player.play(AssetSource('sounds/$path'));
     } catch (e) {
       debugPrint('SoundService.playBuiltin($name) error: $e');
     }
