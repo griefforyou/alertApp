@@ -162,6 +162,9 @@ class _TimerPageState extends State<TimerPage> {
     if (!mounted) return;
     final s = _timerService.state;
     if (s == null) return;
+    // 后台补时过渡：阶段在 App 挂起期间结束，iOS 定时通知已提醒过，
+    // 静默推进（不再 show 通知/播音），避免切回前台重复响铃。
+    final fromBackground = _timerService.lastTransitionFromBackground;
     _notificationService.cancelScheduled();
     setState(() {
       if (s.currentPhase == Phase.breaking) {
@@ -170,20 +173,24 @@ class _TimerPageState extends State<TimerPage> {
         _overlayModal = false;
         _addStats(s.studyMinutes * 60, 1);
         _saveTodayRecord();
-        _notificationService.showNotification(
-          title: "$_typeName结束",
-          body: _overlayBody,
-        );
+        if (!fromBackground) {
+          _notificationService.showNotification(
+            title: "$_typeName结束",
+            body: _overlayBody,
+          );
+        }
         _scheduleNextNotification(s);
       } else if (s.currentPhase == Phase.learning) {
         _overlayTitle = "休息结束！";
         _overlayBody = "${_groupText(s)}开始第 ${s.currentCycle} 轮$_typeName";
         _overlayModal = true;
         _timerService.pause();
-        _notificationService.showNotification(
-          title: "休息结束",
-          body: _overlayBody,
-        );
+        if (!fromBackground) {
+          _notificationService.showNotification(
+            title: "休息结束",
+            body: _overlayBody,
+          );
+        }
         _scheduleNextNotification(s);
       } else if (s.currentPhase == Phase.finished) {
         _overlayTitle = "全部完成！";
@@ -191,14 +198,18 @@ class _TimerPageState extends State<TimerPage> {
         _overlayModal = false;
         _addStats(s.studyMinutes * 60, 1);
         _saveTodayRecord();
-        _notificationService.showNotification(
-          title: "全部完成",
-          body: _overlayBody,
-        );
+        if (!fromBackground) {
+          _notificationService.showNotification(
+            title: "全部完成",
+            body: _overlayBody,
+          );
+        }
       }
       _showOverlay = true;
     });
-    _playPhaseSound();
+    if (!fromBackground) {
+      _playPhaseSound();
+    }
   }
 
   void _scheduleNextNotification(SessionState s) {
@@ -224,14 +235,14 @@ class _TimerPageState extends State<TimerPage> {
   // Windows、Android release 和 Web 无法可靠用自定义音频作通知音：
   // 内置铃声时通知已静音（Web 浏览器通知不支持自定义声音），
   // 这里用 SoundService 播放 assets 里的 wav 补上；
-  // 其他平台靠通知系统自身的 sound，不在此重复播放以免双重声音。
+  // iOS 走通知自带声音（presentSound: true + bundle wav），不在此重复播放；
+  // 其余平台靠通知系统自身的 sound，不在此重复播放以免双重声音。
   void _playPhaseSound() {
     final uri = _notificationSoundUri;
     if (!uri.startsWith('builtin:')) return;
     if (kIsWeb ||
         defaultTargetPlatform == TargetPlatform.windows ||
-        defaultTargetPlatform == TargetPlatform.android ||
-        defaultTargetPlatform == TargetPlatform.iOS) {
+        defaultTargetPlatform == TargetPlatform.android) {
       _soundService.playBuiltin(uri.substring(8));
     }
   }
@@ -376,6 +387,9 @@ class _TimerPageState extends State<TimerPage> {
 
   Future<void> _handleStart() async {
     await _timerService.start(_profile);
+    // iOS 上开始计时就排上第一段结束的定时通知，
+    // 否则首段在后台/锁屏结束时不会有声音（首段切换前从未调度过）。
+    _rescheduleIfNeeded();
     setState(() {});
   }
 

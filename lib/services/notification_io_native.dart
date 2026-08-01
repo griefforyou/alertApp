@@ -154,11 +154,17 @@ class NotificationIO {
       );
     }
     if (soundUri.startsWith('builtin:')) {
-      final name = '${soundUri.substring(8)}.wav';
+      // iOS 通知音只能播放 bundle 里的 wav（assets 不可用），
+      // 所以内置铃声统一用通知自带的声音（presentSound: true），
+      // 前后台一致；前台不再由 SoundService 播放，避免双重声音。
+      final raw = soundUri.substring(8);
+      final dot = raw.lastIndexOf('.');
+      final base = dot > 0 ? raw.substring(0, dot) : raw;
+      final name = '$base.wav';
       return DarwinNotificationDetails(
         presentAlert: true,
         presentBadge: true,
-        presentSound: false,
+        presentSound: true,
         presentBanner: true,
         presentList: true,
         interruptionLevel: InterruptionLevel.active,

@@ -45,10 +45,15 @@ class TimerService extends ChangeNotifier {
 
   bool get isFinished => _state?.currentPhase == Phase.finished;
 
+  static const _backgroundCatchUpThreshold = Duration(seconds: 3);
+  bool _lastTransitionFromBackground = false;
+  bool get lastTransitionFromBackground => _lastTransitionFromBackground;
+
   VoidCallback? onPhaseChanged;
   void Function(StudyPhaseCompleted)? onStudyPhaseCompleted;
 
   Future<void> start(TimerProfile profile) async {
+    _lastTransitionFromBackground = false;
     final now = DateTime.now();
     _state = SessionState(
       startTime: now,
@@ -86,6 +91,10 @@ class TimerService extends ChangeNotifier {
     final remaining = phaseDuration - elapsed;
     _remaining = remaining < Duration.zero ? Duration.zero : remaining;
     if (_remaining!.inSeconds <= 0) {
+      // 阶段结束时刻明显早于当前（App 挂起期间结束），属于后台补时过渡。
+      // 后台时 iOS 已由定时通知提醒过，应用层应静默推进，避免切回前台重复响铃。
+      _lastTransitionFromBackground =
+          -remaining > _backgroundCatchUpThreshold;
       _advancePhase();
     }
     notifyListeners();

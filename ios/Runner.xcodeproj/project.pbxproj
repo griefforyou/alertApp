@@ -19,6 +19,13 @@
 		AABBCCDDEEFFAABBCCDDEE11 /* chime.wav in Resources */ = {isa = PBXBuildFile; fileRef = AABBCCDDEEFFAABBCCDDEE01 /* chime.wav */; };
 		AABBCCDDEEFFAABBCCDDEE12 /* bell.wav in Resources */ = {isa = PBXBuildFile; fileRef = AABBCCDDEEFFAABBCCDDEE02 /* bell.wav */; };
 		AABBCCDDEEFFAABBCCDDEE13 /* gentle.wav in Resources */ = {isa = PBXBuildFile; fileRef = AABBCCDDEEFFAABBCCDDEE03 /* gentle.wav */; };
+		AABBCCDDEEFFAABBCCDDEE14 /* 公鸡叫.wav in Resources */ = {isa = PBXBuildFile; fileRef = AABBCCDDEEFFAABBCCDDEE04 /* 公鸡叫.wav */; };
+		AABBCCDDEEFFAABBCCDDEE15 /* 警告.wav in Resources */ = {isa = PBXBuildFile; fileRef = AABBCCDDEEFFAABBCCDDEE05 /* 警告.wav */; };
+		AABBCCDDEEFFAABBCCDDEE16 /* 猫叫.wav in Resources */ = {isa = PBXBuildFile; fileRef = AABBCCDDEEFFAABBCCDDEE06 /* 猫叫.wav */; };
+		AABBCCDDEEFFAABBCCDDEE17 /* 门铃.wav in Resources */ = {isa = PBXBuildFile; fileRef = AABBCCDDEEFFAABBCCDDEE07 /* 门铃.wav */; };
+		AABBCCDDEEFFAABBCCDDEE18 /* 闹钟.wav in Resources */ = {isa = PBXBuildFile; fileRef = AABBCCDDEEFFAABBCCDDEE08 /* 闹钟.wav */; };
+		AABBCCDDEEFFAABBCCDDEE19 /* 下课铃声.wav in Resources */ = {isa = PBXBuildFile; fileRef = AABBCCDDEEFFAABBCCDDEE09 /* 下课铃声.wav */; };
+		AABBCCDDEEFFAABBCCDDEE1A /* 正确提示.wav in Resources */ = {isa = PBXBuildFile; fileRef = AABBCCDDEEFFAABBCCDDEE0A /* 正确提示.wav */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -65,6 +72,13 @@
 		AABBCCDDEEFFAABBCCDDEE01 /* chime.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = chime.wav; sourceTree = "<group>"; };
 		AABBCCDDEEFFAABBCCDDEE02 /* bell.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = bell.wav; sourceTree = "<group>"; };
 		AABBCCDDEEFFAABBCCDDEE03 /* gentle.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = gentle.wav; sourceTree = "<group>"; };
+		AABBCCDDEEFFAABBCCDDEE04 /* 公鸡叫.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = "公鸡叫.wav"; sourceTree = "<group>"; };
+		AABBCCDDEEFFAABBCCDDEE05 /* 警告.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = "警告.wav"; sourceTree = "<group>"; };
+		AABBCCDDEEFFAABBCCDDEE06 /* 猫叫.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = "猫叫.wav"; sourceTree = "<group>"; };
+		AABBCCDDEEFFAABBCCDDEE07 /* 门铃.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = "门铃.wav"; sourceTree = "<group>"; };
+		AABBCCDDEEFFAABBCCDDEE08 /* 闹钟.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = "闹钟.wav"; sourceTree = "<group>"; };
+		AABBCCDDEEFFAABBCCDDEE09 /* 下课铃声.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = "下课铃声.wav"; sourceTree = "<group>"; };
+		AABBCCDDEEFFAABBCCDDEE0A /* 正确提示.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = "正确提示.wav"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -133,6 +147,13 @@
 				AABBCCDDEEFFAABBCCDDEE01 /* chime.wav */,
 				AABBCCDDEEFFAABBCCDDEE02 /* bell.wav */,
 				AABBCCDDEEFFAABBCCDDEE03 /* gentle.wav */,
+				AABBCCDDEEFFAABBCCDDEE04 /* 公鸡叫.wav */,
+				AABBCCDDEEFFAABBCCDDEE05 /* 警告.wav */,
+				AABBCCDDEEFFAABBCCDDEE06 /* 猫叫.wav */,
+				AABBCCDDEEFFAABBCCDDEE07 /* 门铃.wav */,
+				AABBCCDDEEFFAABBCCDDEE08 /* 闹钟.wav */,
+				AABBCCDDEEFFAABBCCDDEE09 /* 下课铃声.wav */,
+				AABBCCDDEEFFAABBCCDDEE0A /* 正确提示.wav */,
 			);
 			path = Runner;
 			sourceTree = "<group>";
@@ -241,6 +262,13 @@
 				AABBCCDDEEFFAABBCCDDEE11 /* chime.wav in Resources */,
 				AABBCCDDEEFFAABBCCDDEE12 /* bell.wav in Resources */,
 				AABBCCDDEEFFAABBCCDDEE13 /* gentle.wav in Resources */,
+				AABBCCDDEEFFAABBCCDDEE14 /* 公鸡叫.wav in Resources */,
+				AABBCCDDEEFFAABBCCDDEE15 /* 警告.wav in Resources */,
+				AABBCCDDEEFFAABBCCDDEE16 /* 猫叫.wav in Resources */,
+				AABBCCDDEEFFAABBCCDDEE17 /* 门铃.wav in Resources */,
+				AABBCCDDEEFFAABBCCDDEE18 /* 闹钟.wav in Resources */,
+				AABBCCDDEEFFAABBCCDDEE19 /* 下课铃声.wav in Resources */,
+				AABBCCDDEEFFAABBCCDDEE1A /* 正确提示.wav in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
