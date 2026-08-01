@@ -3,6 +3,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/timezone.dart' as tz;
 
+import 'sound_picker_service.dart';
+
 class NotificationIO {
   final FlutterLocalNotificationsPlugin _plugin = FlutterLocalNotificationsPlugin();
   bool _initialized = false;
@@ -51,7 +53,8 @@ class NotificationIO {
     if (!_initialized) return;
     try {
       final androidDetails = _buildAndroidDetails(soundUri);
-      final iosDetails = _buildIosDetails(soundUri);
+      // 前台由 SoundService 播放内置铃声，通知只出横幅（静音），避免双重声音。
+      final iosDetails = _buildIosDetails(soundUri, presentSound: false);
       final windowsDetails = _buildWindowsDetails(soundUri);
       final details = NotificationDetails(android: androidDetails, iOS: iosDetails, windows: windowsDetails);
       final id = DateTime.now().millisecondsSinceEpoch & 0x7FFFFFFF;
@@ -142,42 +145,26 @@ class NotificationIO {
     );
   }
 
-  DarwinNotificationDetails _buildIosDetails(String? soundUri) {
-    if (soundUri == null || soundUri == 'default') {
-      return const DarwinNotificationDetails(
-        presentAlert: true,
-        presentBadge: true,
-        presentSound: true,
-        presentBanner: true,
-        presentList: true,
-        interruptionLevel: InterruptionLevel.active,
-      );
-    }
-    if (soundUri.startsWith('builtin:')) {
-      // iOS 通知音只能播放 bundle 里的 wav（assets 不可用），
-      // 所以内置铃声统一用通知自带的声音（presentSound: true），
-      // 前后台一致；前台不再由 SoundService 播放，避免双重声音。
+  DarwinNotificationDetails _buildIosDetails(String? soundUri, {bool presentSound = true}) {
+    String? sound;
+    if (soundUri != null && soundUri.startsWith('builtin:')) {
+      // bundle 铃声统一用 ASCII 文件名 + .caf 容器：中文名在 Xcode 打包 /
+      // UNNotificationSound soundNamed: 查找链路里不可靠，且实测 wav 在部分
+      // iOS 上不播（回退系统默认音），caf 是 iOS 通知音最稳的格式。
+      // legacyBuiltinSoundMap 兼容用户已保存的旧中文 URI。
       final raw = soundUri.substring(8);
       final dot = raw.lastIndexOf('.');
       final base = dot > 0 ? raw.substring(0, dot) : raw;
-      final name = '$base.wav';
-      return DarwinNotificationDetails(
-        presentAlert: true,
-        presentBadge: true,
-        presentSound: true,
-        presentBanner: true,
-        presentList: true,
-        interruptionLevel: InterruptionLevel.active,
-        sound: name,
-      );
+      sound = '${legacyBuiltinSoundMap[base] ?? base}.caf';
     }
-    return const DarwinNotificationDetails(
+    return DarwinNotificationDetails(
       presentAlert: true,
       presentBadge: true,
-      presentSound: true,
+      presentSound: presentSound,
       presentBanner: true,
       presentList: true,
       interruptionLevel: InterruptionLevel.active,
+      sound: sound,
     );
   }
 

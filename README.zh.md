@@ -63,3 +63,8 @@ today_record.json
 | TimerDisplay 渲染 | `test/widgets/timer_display_test.dart` | 3 |
 | TimerService 状态机 | `test/services/timer_service_test.dart` | 16 |
 | StorageService IO | `test/services/storage_service_test.dart` | 6 |
+
+## Web 非根目录部署打包
+flutter build web --base-href /timer/
+
+flutter build web --release --base-href /timer/

@@ -87,9 +87,21 @@ class _TimerPageState extends State<TimerPage> {
     if (mounted) setState(() {});
   }
 
+  /// iOS Safari autoplay：媒体元素首次 play 必须在用户手势内。
+  /// 预热放在"开始计时"和"铃声确定"等明确的手势入口触发。
+  void _warmUpNotificationSound() {
+    if (!kIsWeb) return;
+    final uri = _notificationSoundUri;
+    if (uri == 'default') {
+      _soundService.warmUp('gentle');
+    } else if (uri.startsWith('builtin:')) {
+      _soundService.warmUp(uri.substring(8));
+    }
+  }
+
   Future<void> _initAsync() async {
     final saved = await _storageService.loadNotificationSound();
-    _notificationSoundUri = saved['uri'] ?? 'default';
+    _notificationSoundUri = normalizeBuiltinUri(saved['uri'] ?? 'default');
     _notificationSoundTitle = saved['title'] ?? '默认系统铃声';
     _notificationService.setSoundUri(_notificationSoundUri != 'default' ? _notificationSoundUri : null);
     if (mounted) setState(() {});
@@ -232,18 +244,28 @@ class _TimerPageState extends State<TimerPage> {
     }
   }
 
-  // Windows、Android release 和 Web 无法可靠用自定义音频作通知音：
-  // 内置铃声时通知已静音（Web 浏览器通知不支持自定义声音），
-  // 这里用 SoundService 播放 assets 里的 wav 补上；
-  // iOS 走通知自带声音（presentSound: true + bundle wav），不在此重复播放；
-  // 其余平台靠通知系统自身的 sound，不在此重复播放以免双重声音。
+  // Web、Windows、Android release 和 iOS 前台都无法可靠用自定义音频作通知音：
+  // 内置铃声时通知已静音（Web 浏览器通知不支持自定义声音；iOS 前台改为由
+  // SoundService 播放，通知只出静音横幅），这里用 SoundService 播放 assets 里的 wav；
+  // iOS 后台走通知自带声音（presentSound: true + bundle caf，见 _buildIosDetails），
+  // 切回前台时 fromBackground 分支不会再次触发此方法，避免双重声音。
+  // Web + iOS Safari 特殊：浏览器通知在前台（亮屏）时不发声，
+  // 默认铃声时也用 SoundService 播 gentle 兜底；桌面浏览器有系统通知音，不再叠加。
   void _playPhaseSound() {
     final uri = _notificationSoundUri;
-    if (!uri.startsWith('builtin:')) return;
-    if (kIsWeb ||
-        defaultTargetPlatform == TargetPlatform.windows ||
-        defaultTargetPlatform == TargetPlatform.android) {
-      _soundService.playBuiltin(uri.substring(8));
+    if (uri.startsWith('builtin:')) {
+      if (kIsWeb ||
+          defaultTargetPlatform == TargetPlatform.windows ||
+          defaultTargetPlatform == TargetPlatform.android ||
+          defaultTargetPlatform == TargetPlatform.iOS) {
+        _soundService.playBuiltin(uri.substring(8));
+      }
+      return;
+    }
+    // 默认铃声：桌面 Web 靠浏览器通知音；iOS（原生前台 & Safari）浏览器通知
+    // 不发声或前台无声，用 SoundService 播 gentle 兜底。
+    if (defaultTargetPlatform == TargetPlatform.iOS) {
+      _soundService.playBeep();
     }
   }
 
@@ -386,6 +408,7 @@ class _TimerPageState extends State<TimerPage> {
   }
 
   Future<void> _handleStart() async {
+    _warmUpNotificationSound();
     await _timerService.start(_profile);
     // iOS 上开始计时就排上第一段结束的定时通知，
     // 否则首段在后台/锁屏结束时不会有声音（首段切换前从未调度过）。
@@ -661,6 +684,7 @@ class _TimerPageState extends State<TimerPage> {
                               _notificationSoundTitle = pendingTitle;
                               _notificationService.setSoundUri(pendingUri != 'default' ? pendingUri : null);
                               await _storageService.saveNotificationSound(pendingUri, pendingTitle);
+                              _warmUpNotificationSound();
                               if (!ctx.mounted) return;
                               Navigator.pop(ctx);
                               setState(() {});

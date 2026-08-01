@@ -16,16 +16,16 @@
 		97C146FC1CF9000F007C117D /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FA1CF9000F007C117D /* Main.storyboard */; };
 		97C146FE1CF9000F007C117D /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FD1CF9000F007C117D /* Assets.xcassets */; };
 		97C147011CF9000F007C117D /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FF1CF9000F007C117D /* LaunchScreen.storyboard */; };
-		AABBCCDDEEFFAABBCCDDEE11 /* chime.wav in Resources */ = {isa = PBXBuildFile; fileRef = AABBCCDDEEFFAABBCCDDEE01 /* chime.wav */; };
-		AABBCCDDEEFFAABBCCDDEE12 /* bell.wav in Resources */ = {isa = PBXBuildFile; fileRef = AABBCCDDEEFFAABBCCDDEE02 /* bell.wav */; };
-		AABBCCDDEEFFAABBCCDDEE13 /* gentle.wav in Resources */ = {isa = PBXBuildFile; fileRef = AABBCCDDEEFFAABBCCDDEE03 /* gentle.wav */; };
-		AABBCCDDEEFFAABBCCDDEE14 /* 公鸡叫.wav in Resources */ = {isa = PBXBuildFile; fileRef = AABBCCDDEEFFAABBCCDDEE04 /* 公鸡叫.wav */; };
-		AABBCCDDEEFFAABBCCDDEE15 /* 警告.wav in Resources */ = {isa = PBXBuildFile; fileRef = AABBCCDDEEFFAABBCCDDEE05 /* 警告.wav */; };
-		AABBCCDDEEFFAABBCCDDEE16 /* 猫叫.wav in Resources */ = {isa = PBXBuildFile; fileRef = AABBCCDDEEFFAABBCCDDEE06 /* 猫叫.wav */; };
-		AABBCCDDEEFFAABBCCDDEE17 /* 门铃.wav in Resources */ = {isa = PBXBuildFile; fileRef = AABBCCDDEEFFAABBCCDDEE07 /* 门铃.wav */; };
-		AABBCCDDEEFFAABBCCDDEE18 /* 闹钟.wav in Resources */ = {isa = PBXBuildFile; fileRef = AABBCCDDEEFFAABBCCDDEE08 /* 闹钟.wav */; };
-		AABBCCDDEEFFAABBCCDDEE19 /* 下课铃声.wav in Resources */ = {isa = PBXBuildFile; fileRef = AABBCCDDEEFFAABBCCDDEE09 /* 下课铃声.wav */; };
-		AABBCCDDEEFFAABBCCDDEE1A /* 正确提示.wav in Resources */ = {isa = PBXBuildFile; fileRef = AABBCCDDEEFFAABBCCDDEE0A /* 正确提示.wav */; };
+		AABBCCDDEEFFAABBCCDDEE11 /* chime.caf in Resources */ = {isa = PBXBuildFile; fileRef = AABBCCDDEEFFAABBCCDDEE01 /* chime.caf */; };
+		AABBCCDDEEFFAABBCCDDEE12 /* bell.caf in Resources */ = {isa = PBXBuildFile; fileRef = AABBCCDDEEFFAABBCCDDEE02 /* bell.caf */; };
+		AABBCCDDEEFFAABBCCDDEE13 /* gentle.caf in Resources */ = {isa = PBXBuildFile; fileRef = AABBCCDDEEFFAABBCCDDEE03 /* gentle.caf */; };
+		AABBCCDDEEFFAABBCCDDEE14 /* gongji.caf in Resources */ = {isa = PBXBuildFile; fileRef = AABBCCDDEEFFAABBCCDDEE04 /* gongji.caf */; };
+		AABBCCDDEEFFAABBCCDDEE15 /* jinggao.caf in Resources */ = {isa = PBXBuildFile; fileRef = AABBCCDDEEFFAABBCCDDEE05 /* jinggao.caf */; };
+		AABBCCDDEEFFAABBCCDDEE16 /* maojiao.caf in Resources */ = {isa = PBXBuildFile; fileRef = AABBCCDDEEFFAABBCCDDEE06 /* maojiao.caf */; };
+		AABBCCDDEEFFAABBCCDDEE17 /* menling.caf in Resources */ = {isa = PBXBuildFile; fileRef = AABBCCDDEEFFAABBCCDDEE07 /* menling.caf */; };
+		AABBCCDDEEFFAABBCCDDEE18 /* naozhong.caf in Resources */ = {isa = PBXBuildFile; fileRef = AABBCCDDEEFFAABBCCDDEE08 /* naozhong.caf */; };
+		AABBCCDDEEFFAABBCCDDEE19 /* xiake.caf in Resources */ = {isa = PBXBuildFile; fileRef = AABBCCDDEEFFAABBCCDDEE09 /* xiake.caf */; };
+		AABBCCDDEEFFAABBCCDDEE1A /* zhengque.caf in Resources */ = {isa = PBXBuildFile; fileRef = AABBCCDDEEFFAABBCCDDEE0A /* zhengque.caf */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -69,16 +69,16 @@
 		97C146FD1CF9000F007C117D /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		97C147001CF9000F007C117D /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		97C147021CF9000F007C117D /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
-		AABBCCDDEEFFAABBCCDDEE01 /* chime.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = chime.wav; sourceTree = "<group>"; };
-		AABBCCDDEEFFAABBCCDDEE02 /* bell.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = bell.wav; sourceTree = "<group>"; };
-		AABBCCDDEEFFAABBCCDDEE03 /* gentle.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = gentle.wav; sourceTree = "<group>"; };
-		AABBCCDDEEFFAABBCCDDEE04 /* 公鸡叫.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = "公鸡叫.wav"; sourceTree = "<group>"; };
-		AABBCCDDEEFFAABBCCDDEE05 /* 警告.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = "警告.wav"; sourceTree = "<group>"; };
-		AABBCCDDEEFFAABBCCDDEE06 /* 猫叫.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = "猫叫.wav"; sourceTree = "<group>"; };
-		AABBCCDDEEFFAABBCCDDEE07 /* 门铃.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = "门铃.wav"; sourceTree = "<group>"; };
-		AABBCCDDEEFFAABBCCDDEE08 /* 闹钟.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = "闹钟.wav"; sourceTree = "<group>"; };
-		AABBCCDDEEFFAABBCCDDEE09 /* 下课铃声.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = "下课铃声.wav"; sourceTree = "<group>"; };
-		AABBCCDDEEFFAABBCCDDEE0A /* 正确提示.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = "正确提示.wav"; sourceTree = "<group>"; };
+		AABBCCDDEEFFAABBCCDDEE01 /* chime.caf */ = {isa = PBXFileReference; lastKnownFileType = audio.caf; path = chime.caf; sourceTree = "<group>"; };
+		AABBCCDDEEFFAABBCCDDEE02 /* bell.caf */ = {isa = PBXFileReference; lastKnownFileType = audio.caf; path = bell.caf; sourceTree = "<group>"; };
+		AABBCCDDEEFFAABBCCDDEE03 /* gentle.caf */ = {isa = PBXFileReference; lastKnownFileType = audio.caf; path = gentle.caf; sourceTree = "<group>"; };
+		AABBCCDDEEFFAABBCCDDEE04 /* gongji.caf */ = {isa = PBXFileReference; lastKnownFileType = audio.caf; path = "gongji.caf"; sourceTree = "<group>"; };
+		AABBCCDDEEFFAABBCCDDEE05 /* jinggao.caf */ = {isa = PBXFileReference; lastKnownFileType = audio.caf; path = "jinggao.caf"; sourceTree = "<group>"; };
+		AABBCCDDEEFFAABBCCDDEE06 /* maojiao.caf */ = {isa = PBXFileReference; lastKnownFileType = audio.caf; path = "maojiao.caf"; sourceTree = "<group>"; };
+		AABBCCDDEEFFAABBCCDDEE07 /* menling.caf */ = {isa = PBXFileReference; lastKnownFileType = audio.caf; path = "menling.caf"; sourceTree = "<group>"; };
+		AABBCCDDEEFFAABBCCDDEE08 /* naozhong.caf */ = {isa = PBXFileReference; lastKnownFileType = audio.caf; path = "naozhong.caf"; sourceTree = "<group>"; };
+		AABBCCDDEEFFAABBCCDDEE09 /* xiake.caf */ = {isa = PBXFileReference; lastKnownFileType = audio.caf; path = "xiake.caf"; sourceTree = "<group>"; };
+		AABBCCDDEEFFAABBCCDDEE0A /* zhengque.caf */ = {isa = PBXFileReference; lastKnownFileType = audio.caf; path = "zhengque.caf"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -144,16 +144,16 @@
 				74858FAE1ED2DC5600515810 /* AppDelegate.swift */,
 				7884E8672EC3CC0400C636F2 /* SceneDelegate.swift */,
 				74858FAD1ED2DC5600515810 /* Runner-Bridging-Header.h */,
-				AABBCCDDEEFFAABBCCDDEE01 /* chime.wav */,
-				AABBCCDDEEFFAABBCCDDEE02 /* bell.wav */,
-				AABBCCDDEEFFAABBCCDDEE03 /* gentle.wav */,
-				AABBCCDDEEFFAABBCCDDEE04 /* 公鸡叫.wav */,
-				AABBCCDDEEFFAABBCCDDEE05 /* 警告.wav */,
-				AABBCCDDEEFFAABBCCDDEE06 /* 猫叫.wav */,
-				AABBCCDDEEFFAABBCCDDEE07 /* 门铃.wav */,
-				AABBCCDDEEFFAABBCCDDEE08 /* 闹钟.wav */,
-				AABBCCDDEEFFAABBCCDDEE09 /* 下课铃声.wav */,
-				AABBCCDDEEFFAABBCCDDEE0A /* 正确提示.wav */,
+				AABBCCDDEEFFAABBCCDDEE01 /* chime.caf */,
+				AABBCCDDEEFFAABBCCDDEE02 /* bell.caf */,
+				AABBCCDDEEFFAABBCCDDEE03 /* gentle.caf */,
+				AABBCCDDEEFFAABBCCDDEE04 /* gongji.caf */,
+				AABBCCDDEEFFAABBCCDDEE05 /* jinggao.caf */,
+				AABBCCDDEEFFAABBCCDDEE06 /* maojiao.caf */,
+				AABBCCDDEEFFAABBCCDDEE07 /* menling.caf */,
+				AABBCCDDEEFFAABBCCDDEE08 /* naozhong.caf */,
+				AABBCCDDEEFFAABBCCDDEE09 /* xiake.caf */,
+				AABBCCDDEEFFAABBCCDDEE0A /* zhengque.caf */,
 			);
 			path = Runner;
 			sourceTree = "<group>";
@@ -259,16 +259,16 @@
 				3B3967161E833CAA004F5970 /* AppFrameworkInfo.plist in Resources */,
 				97C146FE1CF9000F007C117D /* Assets.xcassets in Resources */,
 				97C146FC1CF9000F007C117D /* Main.storyboard in Resources */,
-				AABBCCDDEEFFAABBCCDDEE11 /* chime.wav in Resources */,
-				AABBCCDDEEFFAABBCCDDEE12 /* bell.wav in Resources */,
-				AABBCCDDEEFFAABBCCDDEE13 /* gentle.wav in Resources */,
-				AABBCCDDEEFFAABBCCDDEE14 /* 公鸡叫.wav in Resources */,
-				AABBCCDDEEFFAABBCCDDEE15 /* 警告.wav in Resources */,
-				AABBCCDDEEFFAABBCCDDEE16 /* 猫叫.wav in Resources */,
-				AABBCCDDEEFFAABBCCDDEE17 /* 门铃.wav in Resources */,
-				AABBCCDDEEFFAABBCCDDEE18 /* 闹钟.wav in Resources */,
-				AABBCCDDEEFFAABBCCDDEE19 /* 下课铃声.wav in Resources */,
-				AABBCCDDEEFFAABBCCDDEE1A /* 正确提示.wav in Resources */,
+				AABBCCDDEEFFAABBCCDDEE11 /* chime.caf in Resources */,
+				AABBCCDDEEFFAABBCCDDEE12 /* bell.caf in Resources */,
+				AABBCCDDEEFFAABBCCDDEE13 /* gentle.caf in Resources */,
+				AABBCCDDEEFFAABBCCDDEE14 /* gongji.caf in Resources */,
+				AABBCCDDEEFFAABBCCDDEE15 /* jinggao.caf in Resources */,
+				AABBCCDDEEFFAABBCCDDEE16 /* maojiao.caf in Resources */,
+				AABBCCDDEEFFAABBCCDDEE17 /* menling.caf in Resources */,
+				AABBCCDDEEFFAABBCCDDEE18 /* naozhong.caf in Resources */,
+				AABBCCDDEEFFAABBCCDDEE19 /* xiake.caf in Resources */,
+				AABBCCDDEEFFAABBCCDDEE1A /* zhengque.caf in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
