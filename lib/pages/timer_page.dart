@@ -250,7 +250,8 @@ class _TimerPageState extends State<TimerPage> {
   // iOS 后台走通知自带声音（presentSound: true + bundle caf，见 _buildIosDetails），
   // 切回前台时 fromBackground 分支不会再次触发此方法，避免双重声音。
   // Web + iOS Safari 特殊：浏览器通知在前台（亮屏）时不发声，
-  // 默认铃声时也用 SoundService 播 gentle 兜底；桌面浏览器有系统通知音，不再叠加。
+  // 默认铃声时也用 SoundService 播内置铃声兜底（Web 播第一个内置铃声 chime）；
+  // Windows 桌面浏览器有系统通知音，不再叠加。
   void _playPhaseSound() {
     final uri = _notificationSoundUri;
     if (uri.startsWith('builtin:')) {
@@ -262,9 +263,11 @@ class _TimerPageState extends State<TimerPage> {
       }
       return;
     }
-    // 默认铃声：桌面 Web 靠浏览器通知音；iOS（原生前台 & Safari）浏览器通知
-    // 不发声或前台无声，用 SoundService 播 gentle 兜底。
-    if (defaultTargetPlatform == TargetPlatform.iOS) {
+    // 默认铃声：Web 播第一个内置铃声（chime）；iOS（原生前台 & Safari）浏览器
+    // 通知不发声或前台无声，用 SoundService 播 gentle 兜底；Windows 靠系统通知音。
+    if (kIsWeb) {
+      _soundService.playBuiltin('chime');
+    } else if (defaultTargetPlatform == TargetPlatform.iOS) {
       _soundService.playBeep();
     }
   }

@@ -240,5 +240,29 @@ void main() {
       expect(timerService.remaining!.inMinutes, 10);
       expect(callbackCount, 0);
     });
+
+    test('restore reaching finished does not start tick loop', () async {
+      final now = DateTime.now();
+      await storageService.saveSession(SessionState(
+        startTime: now.subtract(const Duration(minutes: 50)),
+        rounds: [const RoundConfig(workMinutes: 45, breakMinutes: 10)],
+        roundIndex: 0,multiCycle: false,
+    
+        totalCycles: 1,
+        currentCycle: 1,
+        currentPhase: Phase.learning,
+        phaseStartTime: now.subtract(const Duration(minutes: 50)),
+      ));
+
+      int callbackCount = 0;
+      timerService.onPhaseChanged = () { callbackCount++; };
+
+      await timerService.restoreFromStorage();
+
+      expect(timerService.state!.currentPhase, Phase.finished);
+      expect(timerService.isRunning, false);
+      expect(timerService.remaining!.inSeconds, 0);
+      expect(callbackCount, 0);
+    });
   });
 }

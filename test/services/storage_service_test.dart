@@ -84,8 +84,9 @@ void main() {
   });
 
   test('save and load today record', () async {
+    final now = DateTime.now();
     final record = DailyRecord(
-      date: DateTime(2026, 7, 19),
+      date: DateTime(now.year, now.month, now.day),
       perTypeStats: {
         'study': const PerTypeStats(totalStudySeconds: 2700, completedCycles: 1),
       },

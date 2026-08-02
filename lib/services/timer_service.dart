@@ -81,7 +81,7 @@ class TimerService extends ChangeNotifier {
   }
 
   void _tick() {
-    if (_state == null || _state!.isPaused) return;
+    if (_state == null || _state!.isPaused || _state!.currentPhase == Phase.finished) return;
     final elapsed = DateTime.now().difference(_state!.phaseStartTime);
     final phaseDuration = Duration(
       minutes: _state!.currentPhase == Phase.learning
@@ -101,7 +101,7 @@ class TimerService extends ChangeNotifier {
   }
 
   void _advancePhase() {
-    if (_state == null) return;
+    if (_state == null || _state!.currentPhase == Phase.finished) return;
 
     if (_state!.currentPhase == Phase.learning) {
       final s = _state!;
@@ -253,8 +253,13 @@ class TimerService extends ChangeNotifier {
       _remaining = remaining;
     }
 
-    _startTick();
-    ForegroundService.instance.start();
+    // 若补时推进恰好到达 finished（后台期间全部轮次完成），不再启动 tick 计时器，
+    // 否则已完成的会话会被每秒反复触发 _advancePhase -> onPhaseChanged，导致
+    // “全部完成”弹窗在确认后不断重新弹出。
+    if (_state!.currentPhase != Phase.finished) {
+      _startTick();
+      ForegroundService.instance.start();
+    }
     notifyListeners();
   }
 
