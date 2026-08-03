@@ -237,7 +237,9 @@ void main() {
       await timerService.restoreFromStorage();
 
       expect(timerService.state!.currentPhase, Phase.breaking);
-      expect(timerService.remaining!.inMinutes, 10);
+      // 学习 45 分钟在 50 分钟前开始并已结束，休息随之进行了约 5 分钟，
+      // 因此恢复时休息剩余约 5 分钟，而不是重置回完整 10 分钟。
+      expect(timerService.remaining!.inSeconds, inInclusiveRange(299, 300));
       expect(callbackCount, 0);
     });
 
@@ -263,6 +265,104 @@ void main() {
       expect(timerService.isRunning, false);
       expect(timerService.remaining!.inSeconds, 0);
       expect(callbackCount, 0);
+    });
+  });
+
+  group('background catch-up', () {
+    test('advances through learning and break that both elapsed in background', () async {
+      final now = DateTime.now();
+      await storageService.saveSession(SessionState(
+        startTime: now.subtract(const Duration(minutes: 60)),
+        rounds: [const RoundConfig(workMinutes: 45, breakMinutes: 10)],
+        roundIndex: 0,
+        multiCycle: true,
+        totalCycles: 4,
+        currentCycle: 1,
+        currentPhase: Phase.learning,
+        phaseStartTime: now.subtract(const Duration(minutes: 60)),
+      ));
+
+      await timerService.restoreFromStorage();
+
+      // 学习 45 分钟 + 休息 10 分钟都已在后台结束：
+      // 第 1 轮学习于 t=45m 结束、休息于 t=55m 结束，恢复时已进入第 2 轮学习 5 分钟，
+      // 剩余约 40 分钟，而不是重新从休息的 10 分钟倒计时。
+      expect(timerService.state!.currentPhase, Phase.learning);
+      expect(timerService.state!.roundIndex, 0);
+      expect(timerService.state!.currentCycle, 2);
+      expect(timerService.remaining!.inSeconds, inInclusiveRange(2399, 2400));
+      expect(timerService.isRunning, true);
+    });
+
+    test('emits study-phase-completed for each round finished in background', () async {
+      final now = DateTime.now();
+      await storageService.saveSession(SessionState(
+        startTime: now.subtract(const Duration(minutes: 60)),
+        rounds: [const RoundConfig(workMinutes: 45, breakMinutes: 10)],
+        roundIndex: 0,
+        multiCycle: true,
+        totalCycles: 4,
+        currentCycle: 1,
+        currentPhase: Phase.learning,
+        phaseStartTime: now.subtract(const Duration(minutes: 60)),
+      ));
+
+      int completed = 0;
+      timerService.onStudyPhaseCompleted = (_) { completed++; };
+
+      await timerService.restoreFromStorage();
+
+      expect(completed, 1);
+    });
+
+    test('tick path advances through learning and break elapsed while suspended', () async {
+      final profile = _profile(studyMinutes: 5, breakMinutes: 1, totalCycles: 4);
+      await timerService.start(profile);
+
+      int callbacks = 0;
+      timerService.onPhaseChanged = () { callbacks++; };
+
+      // 模拟锁屏/后台挂起 6 分钟：学习 5 分钟 + 休息 1 分钟都在后台结束。
+      timerService.simulateBackgroundCatchUp(const Duration(minutes: 6));
+
+      expect(timerService.lastTransitionFromBackground, true);
+      expect(timerService.state!.currentPhase, Phase.learning);
+      expect(timerService.state!.currentCycle, 2);
+      // 刚进入第 2 轮学习，剩余约 5 分钟（而非重新从休息 1 分钟倒计时）。
+      expect(timerService.remaining!.inSeconds, inInclusiveRange(299, 300));
+      // 多阶段连续补时只触发一次 UI 回调（最终阶段）。
+      expect(callbacks, 1);
+    });
+
+    test('transition within threshold is treated as foreground', () async {
+      final profile = _profile(studyMinutes: 5, breakMinutes: 1);
+      await timerService.start(profile);
+
+      // 学习结束点刚过 1 秒，属于前台正常过渡，不视为后台补时。
+      timerService.simulateBackgroundCatchUp(const Duration(seconds: 301));
+
+      expect(timerService.lastTransitionFromBackground, false);
+      expect(timerService.state!.currentPhase, Phase.breaking);
+      expect(timerService.remaining!.inSeconds, inInclusiveRange(58, 60));
+    });
+
+    test('catch-up reaching finished stops the timer', () async {
+      final profile = TimerProfile(
+        id: 'test',
+        category: TimerCategory.custom,
+        customName: 'Test',
+        rounds: [const RoundConfig(workMinutes: 5, breakMinutes: 1)],
+        multiCycle: false,
+        totalCycles: 1,
+      );
+      await timerService.start(profile);
+
+      // 后台挂起 12 分钟：学习 5 分钟 + 休息 1 分钟全部结束 → 全部完成。
+      timerService.simulateBackgroundCatchUp(const Duration(minutes: 12));
+
+      expect(timerService.state!.currentPhase, Phase.finished);
+      expect(timerService.isRunning, false);
+      expect(timerService.remaining!.inSeconds, 0);
     });
   });
 }

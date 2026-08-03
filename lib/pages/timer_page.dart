@@ -81,6 +81,9 @@ class _TimerPageState extends State<TimerPage> {
       durationSeconds: p.durationSeconds,
     );
     _storageService.appendHistory(r);
+    // 学习阶段完成即计入今日统计：后台补时中连续完成多轮时也会逐轮计入。
+    _addStats(p.durationSeconds, 1);
+    _saveTodayRecord();
   }
 
   void _onTimerUpdate() {
@@ -183,8 +186,6 @@ class _TimerPageState extends State<TimerPage> {
         _overlayTitle = "$_typeName结束！";
         _overlayBody = "${_groupText(s)}休息 ${s.breakMinutes} 分钟";
         _overlayModal = false;
-        _addStats(s.studyMinutes * 60, 1);
-        _saveTodayRecord();
         if (!fromBackground) {
           _notificationService.showNotification(
             title: "$_typeName结束",
@@ -208,8 +209,6 @@ class _TimerPageState extends State<TimerPage> {
         _overlayTitle = "全部完成！";
         _overlayBody = "今天的$_typeName任务已完成";
         _overlayModal = false;
-        _addStats(s.studyMinutes * 60, 1);
-        _saveTodayRecord();
         if (!fromBackground) {
           _notificationService.showNotification(
             title: "全部完成",
@@ -227,18 +226,20 @@ class _TimerPageState extends State<TimerPage> {
   void _scheduleNextNotification(SessionState s) {
     if (defaultTargetPlatform != TargetPlatform.iOS) return;
     final uri = _notificationSoundUri;
+    // 后台补时后当前阶段可能已部分流逝，按剩余时间调度更准确。
+    final r = _timerService.remaining;
     if (s.currentPhase == Phase.breaking) {
       _notificationService.schedule(
         title: "休息结束",
         body: "${_groupText(s)}开始第 ${s.currentCycle} 轮$_typeName",
-        date: DateTime.now().add(Duration(minutes: s.breakMinutes)),
+        date: DateTime.now().add(r ?? Duration(minutes: s.breakMinutes)),
         soundUri: uri != 'default' ? uri : null,
       );
     } else if (s.currentPhase == Phase.learning) {
       _notificationService.schedule(
         title: "$_typeName结束",
         body: "${_groupText(s)}休息 ${s.breakMinutes} 分钟",
-        date: DateTime.now().add(Duration(minutes: s.studyMinutes)),
+        date: DateTime.now().add(r ?? Duration(minutes: s.studyMinutes)),
         soundUri: uri != 'default' ? uri : null,
       );
     }

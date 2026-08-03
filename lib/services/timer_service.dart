@@ -82,25 +82,81 @@ class TimerService extends ChangeNotifier {
 
   void _tick() {
     if (_state == null || _state!.isPaused || _state!.currentPhase == Phase.finished) return;
-    final elapsed = DateTime.now().difference(_state!.phaseStartTime);
-    final phaseDuration = Duration(
-      minutes: _state!.currentPhase == Phase.learning
-          ? _state!.studyMinutes
-          : _state!.breakMinutes,
-    );
-    final remaining = phaseDuration - elapsed;
-    _remaining = remaining < Duration.zero ? Duration.zero : remaining;
-    if (_remaining!.inSeconds <= 0) {
+    final now = DateTime.now();
+    final phaseDuration = _phaseDuration(_state!);
+    final elapsed = now.difference(_state!.phaseStartTime);
+    if (elapsed >= phaseDuration) {
       // 阶段结束时刻明显早于当前（App 挂起期间结束），属于后台补时过渡。
       // 后台时 iOS 已由定时通知提醒过，应用层应静默推进，避免切回前台重复响铃。
       _lastTransitionFromBackground =
-          -remaining > _backgroundCatchUpThreshold;
-      _advancePhase();
+          elapsed - phaseDuration > _backgroundCatchUpThreshold;
+      _catchUpPhases(now, fireFinalCallback: true);
+    } else {
+      _remaining = phaseDuration - elapsed;
     }
     notifyListeners();
   }
 
-  void _advancePhase() {
+  /// 后台补时：按墙钟时间连续推进所有已经完全流逝的阶段。
+  ///
+  /// 每个过渡使用上一阶段的真实结束时刻作为新阶段的 [phaseStartTime]，
+  /// 而不是重置为“当前时间”，从而保留后台挂起期间流逝的休息/学习时间
+  /// （例如学习 + 休息都在锁屏期间结束，切回前台不应让休息重新从 60 秒倒计时）。
+  ///
+  /// 多阶段补时只向 UI 暴露最终结果（最终一次 [onPhaseChanged]），避免在推进
+  /// 循环中途弹出多个 overlay / 重复响铃 / 被页面里的 pause() 打断。
+  void _catchUpPhases(DateTime now, {required bool fireFinalCallback}) {
+    final initial = _state;
+    if (initial == null || initial.currentPhase == Phase.finished) return;
+    var s = initial;
+
+    final phaseChangedCb = onPhaseChanged;
+    onPhaseChanged = null;
+    var advanced = false;
+    // 防御：0 分钟时长的极端配置下按相位数封顶，避免无限循环。
+    final maxSteps = s.rounds.length *
+            (s.multiCycle ? (s.totalCycles > 0 ? s.totalCycles : 100) : 1) *
+            2 +
+        2;
+    var steps = 0;
+    try {
+      while (steps++ < maxSteps && s.currentPhase != Phase.finished) {
+        final phaseDuration = _phaseDuration(s);
+        final elapsed = now.difference(s.phaseStartTime);
+        if (elapsed < phaseDuration) break;
+        final transitionTime = s.phaseStartTime.add(phaseDuration);
+        _advancePhase(transitionTime);
+        advanced = true;
+        s = _state!;
+      }
+    } finally {
+      onPhaseChanged = phaseChangedCb;
+    }
+
+    if (advanced) {
+      _refreshRemaining(now);
+      if (fireFinalCallback) {
+        onPhaseChanged?.call();
+      }
+    }
+  }
+
+  Duration _phaseDuration(SessionState s) => Duration(
+        minutes: s.currentPhase == Phase.learning ? s.studyMinutes : s.breakMinutes,
+      );
+
+  void _refreshRemaining(DateTime now) {
+    final s = _state;
+    if (s == null || s.currentPhase == Phase.finished) {
+      _remaining = Duration.zero;
+      return;
+    }
+    final phaseDuration = _phaseDuration(s);
+    final elapsed = now.difference(s.phaseStartTime);
+    _remaining = elapsed >= phaseDuration ? Duration.zero : phaseDuration - elapsed;
+  }
+
+  void _advancePhase(DateTime transitionTime) {
     if (_state == null || _state!.currentPhase == Phase.finished) return;
 
     if (_state!.currentPhase == Phase.learning) {
@@ -111,20 +167,17 @@ class TimerService extends ChangeNotifier {
           !isLastRound || (s.multiCycle && !isLastCycle);
 
       if (hasNextLearning) {
-        final now = DateTime.now();
         _state = s.copyWith(
           currentPhase: Phase.breaking,
-          phaseStartTime: now,
+          phaseStartTime: transitionTime,
         );
-        _remaining = Duration(minutes: _state!.breakMinutes);
-        _emitStudyPhaseCompleted(s, now);
+        _emitStudyPhaseCompleted(s, transitionTime);
       } else {
-        final now = DateTime.now();
         _state = s.copyWith(currentPhase: Phase.finished);
         _tickTimer?.cancel();
         _tickTimer = null;
         _storage.clearSession();
-        _emitStudyPhaseCompleted(s, now);
+        _emitStudyPhaseCompleted(s, transitionTime);
       }
     } else if (_state!.currentPhase == Phase.breaking) {
       final s = _state!;
@@ -143,9 +196,8 @@ class TimerService extends ChangeNotifier {
               roundIndex: 0,
               currentCycle: nextCycle,
               currentPhase: Phase.learning,
-              phaseStartTime: DateTime.now(),
+              phaseStartTime: transitionTime,
             );
-            _remaining = Duration(minutes: _state!.studyMinutes);
           }
         } else {
           _state = s.copyWith(currentPhase: Phase.finished);
@@ -157,12 +209,12 @@ class TimerService extends ChangeNotifier {
         _state = s.copyWith(
           roundIndex: nextRoundIdx,
           currentPhase: Phase.learning,
-          phaseStartTime: DateTime.now(),
+          phaseStartTime: transitionTime,
         );
-        _remaining = Duration(minutes: _state!.studyMinutes);
       }
     }
 
+    _refreshRemaining(DateTime.now());
     onPhaseChanged?.call();
     if (_state != null && _state!.currentPhase != Phase.finished) {
       _storage.saveSession(_state!);
@@ -235,22 +287,16 @@ class TimerService extends ChangeNotifier {
       return;
     }
 
-    final elapsed = DateTime.now().difference(saved.phaseStartTime);
-    final phaseDuration = Duration(
-      minutes: saved.currentPhase == Phase.learning
-          ? saved.studyMinutes
-          : saved.breakMinutes,
-    );
-    final remaining = phaseDuration - elapsed;
+    final now = DateTime.now();
+    final phaseDuration = _phaseDuration(saved);
+    final elapsed = now.difference(saved.phaseStartTime);
 
-    if (remaining.inSeconds <= 0) {
-      _remaining = Duration.zero;
-      final cb = onPhaseChanged;
-      onPhaseChanged = null;
-      _advancePhase();
-      onPhaseChanged = cb;
+    if (elapsed >= phaseDuration) {
+      // 后台期间可能有多个阶段连续结束：按墙钟时间连续推进。
+      // 恢复时保持静默（iOS 定时通知已提醒过），不触发 UI 回调。
+      _catchUpPhases(now, fireFinalCallback: false);
     } else {
-      _remaining = remaining;
+      _remaining = phaseDuration - elapsed;
     }
 
     // 若补时推进恰好到达 finished（后台期间全部轮次完成），不再启动 tick 计时器，
@@ -261,6 +307,17 @@ class TimerService extends ChangeNotifier {
       ForegroundService.instance.start();
     }
     notifyListeners();
+  }
+
+  /// 仅用于测试：模拟 App 在后台/锁屏挂起 [elapsedSincePhaseStart] 后回到前台，
+  /// 立即触发一次 [_tick] 以执行后台补时推进。
+  @visibleForTesting
+  void simulateBackgroundCatchUp(Duration elapsedSincePhaseStart) {
+    final s = _state;
+    if (s == null) return;
+    _state =
+        s.copyWith(phaseStartTime: DateTime.now().subtract(elapsedSincePhaseStart));
+    _tick();
   }
 
   @override
