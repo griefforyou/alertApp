@@ -218,7 +218,7 @@ void main() {
   });
 
   group('restore phase advance', () {
-    test('advances phase during restore but does not fire callback', () async {
+    test('advances phase during restore and fires a single callback', () async {
       final now = DateTime.now();
       await storageService.saveSession(SessionState(
         startTime: now.subtract(const Duration(minutes: 50)),
@@ -240,7 +240,8 @@ void main() {
       // 学习 45 分钟在 50 分钟前开始并已结束，休息随之进行了约 5 分钟，
       // 因此恢复时休息剩余约 5 分钟，而不是重置回完整 10 分钟。
       expect(timerService.remaining!.inSeconds, inInclusiveRange(299, 300));
-      expect(callbackCount, 0);
+      // 恢复时向 UI 暴露最终过渡，只触发一次回调。
+      expect(callbackCount, 1);
     });
 
     test('restore reaching finished does not start tick loop', () async {
@@ -264,7 +265,7 @@ void main() {
       expect(timerService.state!.currentPhase, Phase.finished);
       expect(timerService.isRunning, false);
       expect(timerService.remaining!.inSeconds, 0);
-      expect(callbackCount, 0);
+      expect(callbackCount, 1);
     });
   });
 
@@ -292,6 +293,28 @@ void main() {
       expect(timerService.state!.currentCycle, 2);
       expect(timerService.remaining!.inSeconds, inInclusiveRange(2399, 2400));
       expect(timerService.isRunning, true);
+    });
+
+    test('restore catch-up into next learning pauses for confirmation', () async {
+      final now = DateTime.now();
+      await storageService.saveSession(SessionState(
+        startTime: now.subtract(const Duration(minutes: 60)),
+        rounds: [const RoundConfig(workMinutes: 45, breakMinutes: 10)],
+        roundIndex: 0,
+        multiCycle: true,
+        totalCycles: 4,
+        currentCycle: 1,
+        currentPhase: Phase.learning,
+        phaseStartTime: now.subtract(const Duration(minutes: 60)),
+      ));
+
+      await timerService.restoreFromStorage();
+
+      // 学习 + 休息都已在后台结束，恢复后进入第 2 轮学习，但必须暂停等待
+      // 用户点击“知道了”确认，而不是自动开始倒计时。
+      expect(timerService.state!.currentPhase, Phase.learning);
+      expect(timerService.state!.isPaused, true);
+      expect(timerService.remaining!.inSeconds, inInclusiveRange(2399, 2400));
     });
 
     test('emits study-phase-completed for each round finished in background', () async {
@@ -328,7 +351,9 @@ void main() {
       expect(timerService.lastTransitionFromBackground, true);
       expect(timerService.state!.currentPhase, Phase.learning);
       expect(timerService.state!.currentCycle, 2);
-      // 刚进入第 2 轮学习，剩余约 5 分钟（而非重新从休息 1 分钟倒计时）。
+      // 刚进入第 2 轮学习，剩余约 5 分钟（而非重新从休息 1 分钟倒计时），
+      // 且必须暂停等待“知道了”确认后再开始。
+      expect(timerService.state!.isPaused, true);
       expect(timerService.remaining!.inSeconds, inInclusiveRange(299, 300));
       // 多阶段连续补时只触发一次 UI 回调（最终阶段）。
       expect(callbacks, 1);

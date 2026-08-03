@@ -135,6 +135,11 @@ class TimerService extends ChangeNotifier {
 
     if (advanced) {
       _refreshRemaining(now);
+      // 休息结束进入下一轮学习：先暂停并等待用户确认（界面弹出“知道了”确认框），
+      // 避免下一轮学习在后台/恢复阶段未经确认就自动开始倒计时。
+      if (_state!.currentPhase == Phase.learning) {
+        pause();
+      }
       if (fireFinalCallback) {
         onPhaseChanged?.call();
       }
@@ -293,8 +298,10 @@ class TimerService extends ChangeNotifier {
 
     if (elapsed >= phaseDuration) {
       // 后台期间可能有多个阶段连续结束：按墙钟时间连续推进。
-      // 恢复时保持静默（iOS 定时通知已提醒过），不触发 UI 回调。
-      _catchUpPhases(now, fireFinalCallback: false);
+      // 恢复时向 UI 暴露最终过渡：若补时后进入学习阶段，调用方（界面）会暂停并
+      // 弹出“休息结束”确认框，等待用户点击“知道了”再开始，而非自动倒计时。
+      _lastTransitionFromBackground = true;
+      _catchUpPhases(now, fireFinalCallback: true);
     } else {
       _remaining = phaseDuration - elapsed;
     }
