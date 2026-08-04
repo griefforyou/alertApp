@@ -3,15 +3,15 @@ import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/foundation.dart';
 
 class SoundService {
-  final _player = AudioPlayer();
+  AudioPlayer? _player;
   static bool _configured = false;
 
-  SoundService() {
+  // 惰性创建：构造时不触碰插件通道，首次播放时才初始化 AudioPlayer。
+  // 避免在无音频插件（如单元/组件测试环境）中构造即抛 MissingPluginException。
+  AudioPlayer get _p {
+    final p = _player ??= AudioPlayer();
     _configure();
-    // 复用同一个 HTMLAudioElement：iOS Safari 要求媒体元素首次 play 必须在用户手势内。
-    // 默认 ReleaseMode.release 会在停止/播完后销毁元素，导致定时触发的播放
-    // 新建元素被 autoplay 拦截而无声（试听有声、通知无声）。
-    unawaited(_player.setReleaseMode(ReleaseMode.stop));
+    return p;
   }
 
   static void _configure() {
@@ -29,9 +29,13 @@ class SoundService {
 
   Future<void> playBuiltin(String name) async {
     try {
-      await _player.stop();
+      final player = _p;
+      // iOS Safari 要求媒体元素首次 play 必须在用户手势内，
+      // 用 stop 模式复用以避免每次新建元素被 autoplay 拦截。
+      await player.setReleaseMode(ReleaseMode.stop);
+      await player.stop();
       final path = name.contains('.') ? name : '$name.wav';
-      await _player.play(AssetSource('sounds/$path'));
+      await player.play(AssetSource('sounds/$path'));
     } catch (e) {
       debugPrint('SoundService.playBuiltin($name) error: $e');
     }
@@ -42,19 +46,20 @@ class SoundService {
   /// 在用户手势内静默预热音频元素（iOS Safari autoplay 限制的解锁手段）。
   /// 音量归零播放后立即停止，元素保留复用；之后的定时触发放声无需手势即可播放。
   Future<void> warmUp(String name) async {
-    final savedVolume = _player.volume;
+    final player = _p;
+    final savedVolume = player.volume;
     try {
-      await _player.setVolume(0);
+      await player.setVolume(0);
       await playBuiltin(name);
-      await _player.stop();
+      await player.stop();
     } catch (e) {
       debugPrint('SoundService.warmUp($name) error: $e');
     } finally {
-      await _player.setVolume(savedVolume);
+      await player.setVolume(savedVolume);
     }
   }
 
   void dispose() {
-    _player.dispose();
+    _p.dispose();
   }
 }

@@ -52,6 +52,9 @@ class _TimerPageState extends State<TimerPage> {
   int get _currentSeconds => _statsSeconds[_profile.id] ?? 0;
   int get _currentCycles => _statsCycles[_profile.id] ?? 0;
 
+  @visibleForTesting
+  TimerService get timerServiceForTest => _timerService;
+
   @override
   void initState() {
     super.initState();
