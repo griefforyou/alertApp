@@ -8,7 +8,7 @@ import 'package:study_timer/services/storage_service.dart';
 import 'package:path_provider_platform_interface/path_provider_platform_interface.dart';
 
 class MockPathProvider extends PathProviderPlatform {
-  static final Directory _tempDir = Directory.systemTemp.createTempSync('test_timer_');
+  final Directory _tempDir = Directory.systemTemp.createTempSync('test_timer_');
 
   @override
   Future<String?> getApplicationDocumentsPath() async {
@@ -286,12 +286,14 @@ void main() {
       await timerService.restoreFromStorage();
 
       // 学习 45 分钟 + 休息 10 分钟都已在后台结束：
-      // 第 1 轮学习于 t=45m 结束、休息于 t=55m 结束，恢复时已进入第 2 轮学习 5 分钟，
-      // 剩余约 40 分钟，而不是重新从休息的 10 分钟倒计时。
+      // 第 1 轮学习于 t=45m 结束、休息于 t=55m 结束，恢复时进入第 2 轮学习。
+      // 下一轮学习须点击“知道了”确认后才真正开始，因此剩余为完整时长 45 分钟
+      // （确认前等待期间的后台时间不计入），并处于暂停等待确认状态。
       expect(timerService.state!.currentPhase, Phase.learning);
       expect(timerService.state!.roundIndex, 0);
       expect(timerService.state!.currentCycle, 2);
-      expect(timerService.remaining!.inSeconds, inInclusiveRange(2399, 2400));
+      expect(timerService.state!.isPaused, true);
+      expect(timerService.remaining!.inSeconds, 2700);
       expect(timerService.isRunning, true);
     });
 
@@ -312,9 +314,31 @@ void main() {
 
       // 学习 + 休息都已在后台结束，恢复后进入第 2 轮学习，但必须暂停等待
       // 用户点击“知道了”确认，而不是自动开始倒计时。
+      // 学习尚未确认开始：剩余时间为完整 45 分钟，而非扣除后台流逝的时间。
       expect(timerService.state!.currentPhase, Phase.learning);
       expect(timerService.state!.isPaused, true);
-      expect(timerService.remaining!.inSeconds, inInclusiveRange(2399, 2400));
+      expect(timerService.remaining!.inSeconds, 2700);
+    });
+
+    test('confirmation gate gives full remaining for next learning round', () async {
+      final profile = _profile(studyMinutes: 5, breakMinutes: 1, totalCycles: 4);
+      await timerService.start(profile);
+
+      // 后台挂起 6 分 30 秒：学习 5 分钟 + 休息 1 分钟已结束，
+      // 第 2 轮学习“虚拟”进行了 30 秒才切回前台。
+      timerService.simulateBackgroundCatchUp(const Duration(minutes: 6, seconds: 30));
+
+      expect(timerService.lastTransitionFromBackground, true);
+      expect(timerService.state!.currentPhase, Phase.learning);
+      expect(timerService.state!.currentCycle, 2);
+      expect(timerService.state!.isPaused, true);
+      // 学习尚未经用户确认开始：剩余为完整 5 分钟，而非扣除后台等待确认的 30 秒。
+      expect(timerService.remaining!.inSeconds, inInclusiveRange(299, 300));
+
+      // 点击“知道了”确认后，从完整时长开始倒计时。
+      timerService.resume();
+      expect(timerService.state!.isPaused, false);
+      expect(timerService.remaining!.inSeconds, inInclusiveRange(299, 300));
     });
 
     test('emits study-phase-completed for each round finished in background', () async {

@@ -49,6 +49,10 @@ class TimerService extends ChangeNotifier {
   bool _lastTransitionFromBackground = false;
   bool get lastTransitionFromBackground => _lastTransitionFromBackground;
 
+  /// 后台补时循环中暂停中间状态的持久化：仅在补时结束后一次性保存最终状态，
+  /// 避免循环内多次未等待的并发写入同一文件导致 JSON 损坏。
+  bool _savingPaused = false;
+
   VoidCallback? onPhaseChanged;
   void Function(StudyPhaseCompleted)? onStudyPhaseCompleted;
 
@@ -90,7 +94,10 @@ class TimerService extends ChangeNotifier {
       // 后台时 iOS 已由定时通知提醒过，应用层应静默推进，避免切回前台重复响铃。
       _lastTransitionFromBackground =
           elapsed - phaseDuration > _backgroundCatchUpThreshold;
-      _catchUpPhases(now, fireFinalCallback: true);
+      if (_catchUpPhases(now, fireFinalCallback: true)) {
+        // 补时推进后才需要持久化：一次性保存最终状态，避免循环内多次并发写。
+        _storage.saveSession(_state!);
+      }
     } else {
       _remaining = phaseDuration - elapsed;
     }
@@ -105,9 +112,11 @@ class TimerService extends ChangeNotifier {
   ///
   /// 多阶段补时只向 UI 暴露最终结果（最终一次 [onPhaseChanged]），避免在推进
   /// 循环中途弹出多个 overlay / 重复响铃 / 被页面里的 pause() 打断。
-  void _catchUpPhases(DateTime now, {required bool fireFinalCallback}) {
+  /// 循环内暂停各中间状态的保存，持久化由调用方负责（_tick / restoreFromStorage
+  /// 各做一次），避免循环内多次未等待的并发写入同一文件导致 JSON 损坏。
+  bool _catchUpPhases(DateTime now, {required bool fireFinalCallback}) {
     final initial = _state;
-    if (initial == null || initial.currentPhase == Phase.finished) return;
+    if (initial == null || initial.currentPhase == Phase.finished) return false;
     var s = initial;
 
     final phaseChangedCb = onPhaseChanged;
@@ -119,6 +128,8 @@ class TimerService extends ChangeNotifier {
             2 +
         2;
     var steps = 0;
+    final savedSaving = _savingPaused;
+    _savingPaused = true;
     try {
       while (steps++ < maxSteps && s.currentPhase != Phase.finished) {
         final phaseDuration = _phaseDuration(s);
@@ -129,21 +140,27 @@ class TimerService extends ChangeNotifier {
         advanced = true;
         s = _state!;
       }
+
+      if (advanced) {
+        _refreshRemaining(now);
+        // 休息结束进入下一轮学习：先暂停并等待用户确认（界面弹出“知道了”确认框），
+        // 避免下一轮学习在后台/恢复阶段未经确认就自动开始倒计时。
+        if (_state!.currentPhase == Phase.learning) {
+          // 点击“知道了”那一刻才真正开始这一轮学习：从“休息结束”到用户确认之间
+          // 流逝的后台时间不应计入学习，因此剩余时间重置为完整时长，确认后再从零倒计时。
+          _remaining = Duration(minutes: _state!.studyMinutes);
+          pause();
+        }
+      }
     } finally {
       onPhaseChanged = phaseChangedCb;
+      _savingPaused = savedSaving;
     }
 
-    if (advanced) {
-      _refreshRemaining(now);
-      // 休息结束进入下一轮学习：先暂停并等待用户确认（界面弹出“知道了”确认框），
-      // 避免下一轮学习在后台/恢复阶段未经确认就自动开始倒计时。
-      if (_state!.currentPhase == Phase.learning) {
-        pause();
-      }
-      if (fireFinalCallback) {
-        onPhaseChanged?.call();
-      }
+    if (advanced && fireFinalCallback) {
+      onPhaseChanged?.call();
     }
+    return advanced;
   }
 
   Duration _phaseDuration(SessionState s) => Duration(
@@ -221,10 +238,11 @@ class TimerService extends ChangeNotifier {
 
     _refreshRemaining(DateTime.now());
     onPhaseChanged?.call();
-    if (_state != null && _state!.currentPhase != Phase.finished) {
-      _storage.saveSession(_state!);
-    } else {
+    final s = _state;
+    if (s == null || s.currentPhase == Phase.finished) {
       ForegroundService.instance.stop();
+    } else if (!_savingPaused) {
+      _storage.saveSession(s);
     }
     notifyListeners();
   }
@@ -242,7 +260,9 @@ class TimerService extends ChangeNotifier {
   void pause() {
     if (_state == null || _state!.isPaused) return;
     _state = _state!.copyWith(isPaused: true, elapsedBeforePause: _remaining);
-    _storage.saveSession(_state!);
+    if (!_savingPaused) {
+      _storage.saveSession(_state!);
+    }
     notifyListeners();
   }
 
@@ -305,6 +325,10 @@ class TimerService extends ChangeNotifier {
     } else {
       _remaining = phaseDuration - elapsed;
     }
+
+    // 补时后的最终状态在此落盘：_catchUpPhases 不在循环内保存，
+    // 这里等待写入完成，避免返回后仍有在途写入或并发覆盖。
+    await _storage.saveSession(_state!);
 
     // 若补时推进恰好到达 finished（后台期间全部轮次完成），不再启动 tick 计时器，
     // 否则已完成的会话会被每秒反复触发 _advancePhase -> onPhaseChanged，导致
