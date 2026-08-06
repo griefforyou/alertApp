@@ -68,3 +68,6 @@ today_record.json
 flutter build web --base-href /timer/
 
 flutter build web --release --base-href /timer/
+
+## Android 打包x64
+flutter build apk --release --target-platform android-x64
