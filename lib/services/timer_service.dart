@@ -96,7 +96,11 @@ class TimerService extends ChangeNotifier {
           elapsed - phaseDuration > _backgroundCatchUpThreshold;
       if (_catchUpPhases(now, fireFinalCallback: true)) {
         // 补时推进后才需要持久化：一次性保存最终状态，避免循环内多次并发写。
-        _storage.saveSession(_state!);
+        // 若补时已推进到 finished，_advancePhase 内已触发 clearSession 删除文件，
+        // 这里不再重复写入，避免删除与写入并发争用同一文件（Windows 下 errno 32）。
+        if (_state!.currentPhase != Phase.finished) {
+          _storage.saveSession(_state!);
+        }
       }
     } else {
       _remaining = phaseDuration - elapsed;
@@ -139,6 +143,12 @@ class TimerService extends ChangeNotifier {
         _advancePhase(transitionTime);
         advanced = true;
         s = _state!;
+        // 新一轮学习必须经用户点击“知道了”确认后才真正开始，
+        // 因此补时一旦进入学习阶段就停止推进，等待确认后再继续，
+        // 避免后台时长足够时把所有轮次静默推进到“全部完成”。
+        if (s.currentPhase == Phase.learning) {
+          break;
+        }
       }
 
       if (advanced) {
@@ -328,7 +338,11 @@ class TimerService extends ChangeNotifier {
 
     // 补时后的最终状态在此落盘：_catchUpPhases 不在循环内保存，
     // 这里等待写入完成，避免返回后仍有在途写入或并发覆盖。
-    await _storage.saveSession(_state!);
+    // 若补时已推进到 finished，_advancePhase 内已触发 clearSession 删除文件，
+    // 不再重复写入，避免删除与写入并发争用同一文件（Windows 下 errno 32）。
+    if (_state!.currentPhase != Phase.finished) {
+      await _storage.saveSession(_state!);
+    }
 
     // 若补时推进恰好到达 finished（后台期间全部轮次完成），不再启动 tick 计时器，
     // 否则已完成的会话会被每秒反复触发 _advancePhase -> onPhaseChanged，导致

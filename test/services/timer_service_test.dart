@@ -383,6 +383,26 @@ void main() {
       expect(callbacks, 1);
     });
 
+    test('multi-round catch-up stops at next learning for confirmation instead of finishing all rounds', () async {
+      final profile = _profile(studyMinutes: 4, breakMinutes: 1, totalCycles: 4);
+      await timerService.start(profile);
+
+      // 后台挂起 20 分钟：(4min 学习 + 1min 休息) × 4 轮全部会在后台结束，
+      // 但补时必须在进入“下一轮学习”处停下等待人工确认，
+      // 不能静默推进到“全部完成”。
+      timerService.simulateBackgroundCatchUp(const Duration(minutes: 20));
+
+      expect(timerService.lastTransitionFromBackground, true);
+      // 停在第二轮学习（第 1 轮学习+休息已在后台完成），而非直接 finished。
+      expect(timerService.state!.currentPhase, Phase.learning);
+      expect(timerService.state!.currentCycle, 2);
+      expect(timerService.state!.roundIndex, 0);
+      expect(timerService.isFinished, false);
+      // 暂停等待“知道了”确认，剩余为完整 4 分钟（后台等待确认时间不计入学习）。
+      expect(timerService.state!.isPaused, true);
+      expect(timerService.remaining!.inSeconds, inInclusiveRange(239, 240));
+    });
+
     test('transition within threshold is treated as foreground', () async {
       final profile = _profile(studyMinutes: 5, breakMinutes: 1);
       await timerService.start(profile);
